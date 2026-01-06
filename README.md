@@ -1,10 +1,16 @@
 # santricity-client
 
-A lightweight Python client library and CLI for managing NetApp E-Series SANtricity systems over the REST API. The goal is to provide a consistent abstraction for the most frequently used storage-management actions while keeping the codebase easy to extend as new requirements emerge:
+A lightweight Python client library and CLI for managing NetApp E-Series SANtricity systems over the REST API.
+
+The goal is to provide a consistent abstraction for the most frequently used storage-management actions while keeping the codebase easy to extend as new requirements emerge:
 
 - Volume
 - Host(s)
-- Mappings
+- Volume mappings
+
+Additional features can be added as required.
+
+This makes `santricity-client` suitable for most Day 1+ needs and convenient use in automation pipelines and integrations.
 
 ## Features
 
@@ -198,6 +204,8 @@ santricity mappings list \
     --username admin \
     --password secret
 ```
+
+Use `--resolve` to resolve volume and storage pool names and show them instead of the long IDs.
 
 Map a volume to a specific host (even if it belongs to a host group):
 

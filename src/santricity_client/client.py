@@ -107,6 +107,135 @@ class SANtricityClient:
         )
         return response.data
 
+    def mappings_report(self) -> list[dict[str, Any]]:
+        """Return a best-effort human-friendly view of volume mappings.
+
+        This method performs the following calls (best-effort order):
+        - GET /volumes
+        - GET /storage-pools
+        - GET /hosts
+        - GET /host-groups
+        - GET /volume-mappings
+
+        The returned mapping rows are shallow copies of the mapping objects
+        augmented with additional keys that are useful for human consumption
+        and for the CLI table rendering (for example: `mappableObjectName`,
+        `poolName`, `poolFreeSpace`, `hostLabel`, `hostGroup`).
+        """
+        vols = self.volumes.list() or []
+        pools = self.pools.list() or []
+        hosts = self.hosts.list() or []
+        host_groups = self.hosts.list_groups() or []
+        mappings = self.mappings.list() or []
+
+        # Build quick lookup maps by common identifier fields. Map multiple
+        # identifier keys to the same object so different payload shapes
+        # (present in different SANtricity releases) resolve correctly.
+        vol_by_id: dict[str, dict[str, Any]] = {}
+        for v in vols:
+            candidates = (
+                v.get("volumeRef"),
+                v.get("id"),
+                v.get("mappableObjectId"),
+                v.get("mappableObjectRef"),
+            )
+            for cand in candidates:
+                if cand:
+                    vol_by_id.setdefault(str(cand), v)
+
+        pool_by_id: dict[str, dict[str, Any]] = {}
+        for p in pools:
+            candidates = (
+                p.get("id"),
+                p.get("volumeGroupRef"),
+                p.get("volumeGroupId"),
+                p.get("volumeGroupRef"),
+            )
+            for cand in candidates:
+                if cand:
+                    pool_by_id.setdefault(str(cand), p)
+
+        host_by_ref: dict[str, dict[str, Any]] = {}
+        for h in hosts:
+            candidates = (h.get("hostRef"), h.get("id"), h.get("clusterRef"))
+            for cand in candidates:
+                if cand:
+                    host_by_ref.setdefault(str(cand), h)
+
+        group_by_cluster: dict[str, dict[str, Any]] = {}
+        for g in host_groups:
+            candidates = (g.get("clusterRef"), g.get("id"))
+            for cand in candidates:
+                if cand:
+                    group_by_cluster.setdefault(str(cand), g)
+
+        result: list[dict[str, Any]] = []
+        for m in mappings:
+            row: dict[str, Any] = dict(m)
+
+            # Resolve volume info
+            vid = (
+                m.get("volumeRef")
+                or m.get("mappableObjectId")
+                or m.get("mappableObjectRef")
+                or m.get("mappableObject")
+            )
+            if vid:
+                vol = vol_by_id.get(str(vid))
+                if vol:
+                    row.setdefault("mappableObjectName", vol.get("name") or vol.get("label"))
+                    # common capacity keys
+                    for cap_key in ("capacity", "reportedSize", "currentVolumeSize"):
+                        if cap_key in vol and vol.get(cap_key) is not None:
+                            row.setdefault("capacity", vol.get(cap_key))
+                            break
+                    # pool lookup
+                    pool_id = vol.get("volumeGroupRef") or vol.get("poolId") or vol.get("storagePoolId")
+                    if pool_id:
+                        pool = pool_by_id.get(str(pool_id))
+                        if pool:
+                            row.setdefault("poolName", pool.get("label") or pool.get("name"))
+                            if pool.get("freeSpace") is not None:
+                                row.setdefault("poolFreeSpace", pool.get("freeSpace"))
+                            # RAID level best-effort
+                            raid = pool.get("raidLevel")
+                            if not raid:
+                                extents = pool.get("extents")
+                                if isinstance(extents, (list, tuple)) and extents:
+                                    first = extents[0]
+                                    if isinstance(first, Mapping):
+                                        raid = first.get("raidLevel")
+                            if raid:
+                                row.setdefault("raidLevel", raid)
+
+            # Resolve mapping target (host or host-group)
+            target_id = m.get("targetId") or m.get("clusterRef") or m.get("hostRef") or m.get("hostGroup")
+            if target_id:
+                # Try hosts first
+                host_obj = host_by_ref.get(str(target_id))
+                if host_obj:
+                    row.setdefault("hostLabel", host_obj.get("label") or host_obj.get("name"))
+                    row.setdefault("hostRef", host_obj.get("hostRef") or host_obj.get("id"))
+                    row.setdefault("targetLabel", row.get("hostLabel"))
+                else:
+                    group_obj = group_by_cluster.get(str(target_id))
+                    if group_obj:
+                        row.setdefault("hostGroup", group_obj.get("label") or group_obj.get("name"))
+                        row.setdefault("clusterRef", group_obj.get("clusterRef") or group_obj.get("id"))
+                        row.setdefault("targetLabel", row.get("hostGroup"))
+                    else:
+                        # last-resort: echo target id into a display key
+                        row.setdefault("targetLabel", str(target_id))
+
+            # Provide a normalized mapping id for display
+            map_id = m.get("mapRef") or m.get("mappingRef") or m.get("id") or m.get("lunMappingRef")
+            if map_id:
+                row.setdefault("mappingRef", map_id)
+
+            result.append(row)
+
+        return result
+
     def close(self) -> None:
         self._session.close()
 

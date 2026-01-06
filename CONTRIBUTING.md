@@ -30,4 +30,4 @@ Thank you for considering a contribution to the SANtricity Client (Python). The 
 
 ## Reporting Security Issues
 
-Do file public issues for security problems. Nonsense issues will be closed with no comment.
+Do file public issues for security problems. Nonsense issues will be closed.

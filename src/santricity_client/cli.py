@@ -725,6 +725,9 @@ def mappings_list(
     release_version: str | None = _SHARED_OPTIONS["release_version"],
     system_id: str | None = _SHARED_OPTIONS["system_id"],
     output_json: bool = _SHARED_OPTIONS["output_json"],
+    resolve: bool = typer.Option(
+        False, "--resolve", help="Resolve IDs to human-readable names (may perform extra requests)."
+    ),
 ) -> None:
     """List volume-to-host or host-group mappings."""
 
@@ -741,7 +744,10 @@ def mappings_list(
         system_id=system_id,
     ) as client:
         try:
-            mappings = client.mappings.list()
+            if resolve:
+                mappings = client.mappings_report()
+            else:
+                mappings = client.mappings.list()
         except RequestError as exc:
             _handle_request_error(exc)
             return
