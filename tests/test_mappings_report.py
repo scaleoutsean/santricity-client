@@ -93,4 +93,8 @@ def test_mappings_report_resolves_names_and_pools():
     assert first.get("poolName") == "pool-a"
     assert first.get("poolFreeSpace") == 5000000
     assert first.get("hostLabel") == "host-a"
-    assert first.get("mappingRef") == "m1"
+    assert first.get("mappingRef") == "8500"
+
+    second = report[1]
+    assert second.get("targetLabel") == "host-group-a"
+    assert second.get("mappingRef") == "8501"
