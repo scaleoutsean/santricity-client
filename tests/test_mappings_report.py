@@ -28,7 +28,7 @@ def test_mappings_report_resolves_names_and_pools():
     pools = [
         {
             "id": "2222222222222222222222222222222222222222",
-            "label": "pool-a",
+            "volumeGroupName": "pool-a",
             "freeSpace": 5000000,
             "raidLevel": "raid6",
         }
@@ -37,7 +37,7 @@ def test_mappings_report_resolves_names_and_pools():
     hosts = [
         {
             "hostRef": "3333333333333333333333333333333333333333",
-            "label": "host-a",
+            "hostName": "host-a",
             "id": "3333333333333333333333333333333333333333",
         }
     ]
@@ -45,7 +45,7 @@ def test_mappings_report_resolves_names_and_pools():
     host_groups = [
         {
             "clusterRef": "4444444444444444444444444444444444444444",
-            "label": "host-group-a",
+            "hostGroupLabel": "host-group-a",
             "id": "4444444444444444444444444444444444444444",
         }
     ]

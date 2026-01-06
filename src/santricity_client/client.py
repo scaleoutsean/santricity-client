@@ -183,7 +183,15 @@ class SANtricityClient:
             if vid:
                 vol = vol_by_id.get(str(vid))
                 if vol:
-                    row.setdefault("mappableObjectName", vol.get("name") or vol.get("label"))
+                    vol_name = vol.get("name") or vol.get("label")
+                    if not vol_name:
+                        for fallback_key in ("volumeName", "mappableObjectName", "mappableObjectLabel"):
+                            candidate = vol.get(fallback_key)
+                            if candidate:
+                                vol_name = candidate
+                                break
+                    if vol_name:
+                        row.setdefault("mappableObjectName", vol_name)
                     # common capacity keys
                     for cap_key in ("capacity", "reportedSize", "currentVolumeSize"):
                         if cap_key in vol and vol.get(cap_key) is not None:
@@ -194,7 +202,15 @@ class SANtricityClient:
                     if pool_id:
                         pool = pool_by_id.get(str(pool_id))
                         if pool:
-                            row.setdefault("poolName", pool.get("label") or pool.get("name"))
+                            pool_name = pool.get("label") or pool.get("name")
+                            if not pool_name:
+                                for pool_key in ("volumeGroupLabel", "volumeGroupName"):
+                                    candidate = pool.get(pool_key)
+                                    if candidate:
+                                        pool_name = candidate
+                                        break
+                            if pool_name:
+                                row.setdefault("poolName", pool_name)
                             if pool.get("freeSpace") is not None:
                                 row.setdefault("poolFreeSpace", pool.get("freeSpace"))
                             # RAID level best-effort
@@ -214,13 +230,29 @@ class SANtricityClient:
                 # Try hosts first
                 host_obj = host_by_ref.get(str(target_id))
                 if host_obj:
-                    row.setdefault("hostLabel", host_obj.get("label") or host_obj.get("name"))
+                    host_label = host_obj.get("label") or host_obj.get("name")
+                    if not host_label:
+                        for host_key in ("hostLabel", "hostName"):
+                            candidate = host_obj.get(host_key)
+                            if candidate:
+                                host_label = candidate
+                                break
+                    if host_label:
+                        row.setdefault("hostLabel", host_label)
                     row.setdefault("hostRef", host_obj.get("hostRef") or host_obj.get("id"))
                     row.setdefault("targetLabel", row.get("hostLabel"))
                 else:
                     group_obj = group_by_cluster.get(str(target_id))
                     if group_obj:
-                        row.setdefault("hostGroup", group_obj.get("label") or group_obj.get("name"))
+                        group_label = group_obj.get("label") or group_obj.get("name")
+                        if not group_label:
+                            for group_key in ("hostGroupLabel", "clusterName"):
+                                candidate = group_obj.get(group_key)
+                                if candidate:
+                                    group_label = candidate
+                                    break
+                        if group_label:
+                            row.setdefault("hostGroup", group_label)
                         row.setdefault("clusterRef", group_obj.get("clusterRef") or group_obj.get("id"))
                         row.setdefault("targetLabel", row.get("hostGroup"))
                     else:

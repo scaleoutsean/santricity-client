@@ -241,7 +241,7 @@ CLI_TABLE_VIEWS: dict[str, TableView] = {
         title="Volume Mappings",
         columns=(
             Column("Mapping Ref", keys=("lunMappingRef", "mappingRef", "id")),
-            Column("Volume", keys=("volumeRef", "mappableObjectName", "volumeName", "mappableObjectId")),
+            Column("Volume", keys=("mappableObjectName", "name", "label", "volumeName", "volumeRef", "mappableObjectId")),
             Column("Target", extractor=_mapping_target),
             Column("LUN", keys=("lun",), justify="right"),
         ),
