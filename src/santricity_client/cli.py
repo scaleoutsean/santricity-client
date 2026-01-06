@@ -70,6 +70,7 @@ def _build_client(
         if not expanded_cert.exists():
             raise typer.BadParameter("Certificate file not found for --cert option.")
         if not verify_ssl:
+            typer.secho("Cannot combine --cert with --no-verify.", err=True, fg=typer.colors.RED)
             raise typer.BadParameter("Cannot combine --cert with --no-verify.")
         verify_target = str(expanded_cert)
     else:
