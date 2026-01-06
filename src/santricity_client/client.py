@@ -225,41 +225,55 @@ class SANtricityClient:
                                 row.setdefault("raidLevel", raid)
 
             # Resolve mapping target (host or host-group)
-            target_id = m.get("targetId") or m.get("clusterRef") or m.get("hostRef") or m.get("hostGroup")
+            candidate_targets = (
+                m.get("targetId"),
+                m.get("clusterRef"),
+                m.get("hostRef"),
+                m.get("hostGroup"),
+                m.get("mapRef"),
+            )
             best_target_label: str | None = None
-            if target_id:
-                # Try hosts first
-                host_obj = host_by_ref.get(str(target_id))
+            target_resolved = False
+            for candidate in candidate_targets:
+                if not candidate:
+                    continue
+                key = str(candidate)
+                host_obj = host_by_ref.get(key)
                 if host_obj:
                     host_label = host_obj.get("label") or host_obj.get("name")
                     if not host_label:
                         for host_key in ("hostLabel", "hostName"):
-                            candidate = host_obj.get(host_key)
-                            if candidate:
-                                host_label = candidate
+                            candidate_label = host_obj.get(host_key)
+                            if candidate_label:
+                                host_label = candidate_label
                                 break
                     if host_label:
-                        if host_label:
-                            row.setdefault("hostLabel", host_label)
-                            best_target_label = host_label
+                        row.setdefault("hostLabel", host_label)
+                        best_target_label = host_label
                     row.setdefault("hostRef", host_obj.get("hostRef") or host_obj.get("id"))
-                else:
-                    group_obj = group_by_cluster.get(str(target_id))
-                    if group_obj:
-                        group_label = group_obj.get("label") or group_obj.get("name")
-                        if not group_label:
-                            for group_key in ("hostGroupLabel", "clusterName"):
-                                candidate = group_obj.get(group_key)
-                                if candidate:
-                                    group_label = candidate
-                                    break
-                        if group_label:
-                            row.setdefault("hostGroup", group_label)
-                            best_target_label = group_label
-                        row.setdefault("clusterRef", group_obj.get("clusterRef") or group_obj.get("id"))
-                    else:
-                        # last-resort: echo target id into a display key
-                        best_target_label = str(target_id)
+                    target_resolved = True
+                    break
+                group_obj = group_by_cluster.get(key)
+                if group_obj:
+                    group_label = group_obj.get("label") or group_obj.get("name")
+                    if not group_label:
+                        for group_key in ("hostGroupLabel", "clusterName"):
+                            candidate_label = group_obj.get(group_key)
+                            if candidate_label:
+                                group_label = candidate_label
+                                break
+                    if group_label:
+                        row.setdefault("hostGroup", group_label)
+                        best_target_label = group_label
+                    row.setdefault("clusterRef", group_obj.get("clusterRef") or group_obj.get("id"))
+                    target_resolved = True
+                    break
+
+            if not target_resolved:
+                for candidate in candidate_targets:
+                    if candidate:
+                        best_target_label = str(candidate)
+                        break
 
             if not best_target_label:
                 for fallback_key in ("targetLabel", "targetName", "hostGroupLabel", "clusterName", "hostLabel"):

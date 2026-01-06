@@ -39,7 +39,12 @@ def test_mappings_report_resolves_names_and_pools():
             "hostRef": "3333333333333333333333333333333333333333",
             "hostName": "host-a",
             "id": "3333333333333333333333333333333333333333",
-        }
+        },
+        {
+            "hostRef": "5555555555555555555555555555555555555555",
+            "label": "host-b",
+            "id": "5555555555555555555555555555555555555555",
+        },
     ]
 
     host_groups = [
@@ -73,6 +78,16 @@ def test_mappings_report_resolves_names_and_pools():
             "id": "m2",
             "targetId": "4444444444444444444444444444444444444444",
         },
+        {
+            "lunMappingRef": "m3",
+            "lun": 3,
+            "ssid": 2,
+            "perms": 15,
+            "volumeRef": "1111111111111111111111111111111111111111",
+            "type": "host",
+            "mapRef": "5555555555555555555555555555555555555555",
+            "id": "m3",
+        },
     ]
 
     # Patch client resources to return our fixtures
@@ -85,7 +100,7 @@ def test_mappings_report_resolves_names_and_pools():
     report = client.mappings_report()
 
     assert isinstance(report, list)
-    assert len(report) == 2
+    assert len(report) == 3
 
     first = report[0]
     assert first.get("mappableObjectName") == "test_name_1"
@@ -98,3 +113,8 @@ def test_mappings_report_resolves_names_and_pools():
     second = report[1]
     assert second.get("targetLabel") == "host-group-a"
     assert second.get("mappingRef") == "8501"
+
+    third = report[2]
+    assert third.get("hostLabel") == "host-b"
+    assert third.get("targetLabel") == "host-b"
+    assert third.get("mappingRef") == "5555555555555555555555555555555555555555"
