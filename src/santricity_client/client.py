@@ -226,6 +226,7 @@ class SANtricityClient:
 
             # Resolve mapping target (host or host-group)
             target_id = m.get("targetId") or m.get("clusterRef") or m.get("hostRef") or m.get("hostGroup")
+            best_target_label: str | None = None
             if target_id:
                 # Try hosts first
                 host_obj = host_by_ref.get(str(target_id))
@@ -238,9 +239,10 @@ class SANtricityClient:
                                 host_label = candidate
                                 break
                     if host_label:
-                        row.setdefault("hostLabel", host_label)
+                        if host_label:
+                            row.setdefault("hostLabel", host_label)
+                            best_target_label = host_label
                     row.setdefault("hostRef", host_obj.get("hostRef") or host_obj.get("id"))
-                    row.setdefault("targetLabel", row.get("hostLabel"))
                 else:
                     group_obj = group_by_cluster.get(str(target_id))
                     if group_obj:
@@ -253,11 +255,21 @@ class SANtricityClient:
                                     break
                         if group_label:
                             row.setdefault("hostGroup", group_label)
+                            best_target_label = group_label
                         row.setdefault("clusterRef", group_obj.get("clusterRef") or group_obj.get("id"))
-                        row.setdefault("targetLabel", row.get("hostGroup"))
                     else:
                         # last-resort: echo target id into a display key
-                        row.setdefault("targetLabel", str(target_id))
+                        best_target_label = str(target_id)
+
+            if not best_target_label:
+                for fallback_key in ("targetLabel", "targetName", "hostGroupLabel", "clusterName", "hostLabel"):
+                    candidate = row.get(fallback_key)
+                    if candidate:
+                        best_target_label = str(candidate)
+                        break
+
+            if best_target_label:
+                row.setdefault("targetLabel", best_target_label)
 
             # Provide a normalized mapping id for display
             map_id = m.get("mapRef") or m.get("mappingRef") or m.get("id") or m.get("lunMappingRef")

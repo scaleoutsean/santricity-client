@@ -129,23 +129,21 @@ def _supported_block_sizes(row: Row) -> Any:
 def _mapping_target(row: Row) -> str:
     for key in (
         "targetLabel",
+        "hostGroup",
+        "hostLabel",
         "targetName",
         "hostGroupLabel",
         "clusterName",
-        "hostLabel",
-        "targetId",
-        "clusterRef",
-        "hostRef",
     ):
         candidate = row.get(key)
         if candidate:
             return str(candidate)
-    # fall back to id fields present on mapping rows; prefer mapRef over numeric SSID
-    for key in ("mapRef", "ssid", "targetId"):
+    # fall back to identifiers if no name-like field is available
+    for key in ("targetId", "clusterRef", "hostRef", "mapRef", "ssid"):
         candidate = row.get(key)
         if candidate:
             return str(candidate)
-    return ""
+    return "-"
 
 
 def _volume_pool(row: Row) -> str:
