@@ -1,5 +1,7 @@
 # santricity-client
 
+[![CI](https://github.com/scaleoutsean/santricity-client/actions/workflows/ci.yml/badge.svg)](https://github.com/scaleoutsean/santricity-client/actions/workflows/ci.yml)
+
 A lightweight Python client library and CLI for managing NetApp E-Series SANtricity systems over the REST API.
 
 The goal is to provide a consistent abstraction for the most frequently used storage-management actions while keeping the codebase easy to extend as new requirements emerge:
