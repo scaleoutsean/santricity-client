@@ -1,4 +1,3 @@
-import pytest
 from typer.testing import CliRunner
 
 from santricity_client.cli import app

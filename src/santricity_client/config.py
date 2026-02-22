@@ -1,8 +1,11 @@
 """Configuration helpers for SANtricity client."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
+
+SYMBOL_LEGACY_PATH = "symbol"
 
 
 @dataclass(slots=True)

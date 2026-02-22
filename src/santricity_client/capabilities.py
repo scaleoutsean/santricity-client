@@ -1,4 +1,5 @@
 """Capability matrix and feature flags for SANtricity releases."""
+
 from __future__ import annotations
 
 import warnings

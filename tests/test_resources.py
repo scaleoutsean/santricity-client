@@ -1,7 +1,6 @@
 from santricity_client import SANtricityClient
 from santricity_client.auth.basic import BasicAuth
 
-
 DEFAULT_SYSTEM_ID = "600A098000F63714"
 
 

@@ -6,6 +6,7 @@ A lightweight Python client library and CLI for managing NetApp E-Series SANtric
 
 The goal is to provide a consistent abstraction for the most frequently used storage-management actions while keeping the codebase easy to extend as new requirements emerge:
 
+- Storage pools (list only)
 - Volume
 - Host(s)
 - Volume mappings
@@ -162,6 +163,34 @@ santricity volumes create \
 
 The CLI validates uniqueness by default. Supply `--allow-duplicate-name` only when you intentionally need two volumes with the same label.
 
+### Create host 
+
+This client currently suppors one initiator per host, which seems to be the norm anyway.
+
+iSCSI hosts can be created with IQN and optionally client-side CHAP credentials:
+
+```python
+client.hosts.add_initiator(
+    host_ref="...", 
+    name="iqn.2010-01.com.example:...", 
+    type="iscsi", 
+    chap_secret="secret123"
+)
+```
+
+NVMe/RoCE hosts can be defined (one port per host) like so:
+
+```python
+client.hosts.add_initiator(
+    host_ref="...",
+    name="nqn.2014-08.org.nvmexpress:uuid:...",
+    type="nvmeof",
+    label="my-nvme-initiator"
+)
+```
+
+Once hosts are added, hosts groups can be formed without protocol-specific information.
+
 ### Power-user extras
 
 You can include arbitrary key/value pairs in the API payload using the `--extras` flag. Provide comma-separated `k=v` pairs; values are coerced to booleans, numbers, or `None` when appropriate. Example:
@@ -248,6 +277,8 @@ The command returns a JSON summary that includes the bundle display string (`11.
 
 ## Releasing
 
+Note: this package *may* be published to PyPI, but that is unlikely because I think there isn't enough interest in this library to justify the burden of maintaining a PyPI package.
+
 - Update `CHANGELOG.md` and bump the version in `pyproject.toml`.
 - Build the package with `python -m build`.
-- Publish to PyPI via `twine upload dist/*` when ready.
+- Publish to PyPI via `twine upload dist/*`.

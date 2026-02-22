@@ -1,4 +1,5 @@
 """Volume mapping helpers."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -54,6 +55,16 @@ class VolumeMappingsResource(ResourceBase):
         if perms is not None:
             payload["perms"] = perms
         return self.create(payload)
+
+    def move(self, map_ref: str, target_id: str, lun: int | None = None) -> dict[str, Any]:
+        """Move a volume mapping to a different host or host group."""
+        profile = self._client.capabilities
+        path = f"{profile.mapping_endpoint}/{map_ref}/move"
+        payload: dict[str, Any] = {"targetId": target_id}
+        if lun is not None:
+            payload["lun"] = lun
+
+        return self._client.request("POST", path, json_payload=payload)
 
     def _resolve_target_id(
         self,

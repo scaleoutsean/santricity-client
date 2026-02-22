@@ -1,12 +1,13 @@
 """Command-line interface for interacting with SANtricity arrays."""
+
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-import os
 import typer
 
 try:  # pragma: no cover - exercised in runtime environments
@@ -685,7 +686,9 @@ def volumes_create(
             if isinstance(extras_dict, dict):
                 payload.update(extras_dict)
         except Exception:
-            raise typer.BadParameter("Invalid format for --extras; expected k=v pairs separated by commas.")
+            raise typer.BadParameter(
+                "Invalid format for --extras; expected k=v pairs separated by commas."
+            ) from None
 
     with _build_client(
         base_url=base_url,
@@ -813,4 +816,45 @@ def mappings_create(
         except ResolutionError as exc:
             typer.secho(str(exc), err=True, fg=typer.colors.RED)
             raise typer.Exit(code=1) from exc
+    _echo_json(result)
+
+
+@mappings_app.command("remap")
+def mappings_remap(
+    map_ref: str = typer.Argument(..., help="The ID/Ref of the mapping to move."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    target_id: str = typer.Option(
+        ..., "--target-id", help="The new target ID (Host or Host Group)."
+    ),
+    lun: int | None = typer.Option(None, "--lun", help="New LUN number (optional)."),
+) -> None:
+    """Move an existing mapping to a different target."""
+
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            result = client.mappings.move(map_ref, target_id, lun=lun)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+
     _echo_json(result)

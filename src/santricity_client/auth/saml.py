@@ -1,4 +1,5 @@
 """Placeholder SAML2 strategy."""
+
 from __future__ import annotations
 
 from collections.abc import MutableMapping

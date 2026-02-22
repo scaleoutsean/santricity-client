@@ -1,4 +1,5 @@
 """System metadata helpers for firmware discovery."""
+
 from __future__ import annotations
 
 from typing import Any

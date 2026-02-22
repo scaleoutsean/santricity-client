@@ -1,8 +1,10 @@
 """Schema describing important fields for CLI table rendering."""
+
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping
+from typing import Any
 
 Row = Mapping[str, Any]
 ValueExtractor = Callable[[Row], Any]
@@ -63,7 +65,7 @@ def _bytes_formatter(*, precision: int = 2) -> ValueFormatter:
         number = _coerce_number(value)
         if number is None:
             return ""
-        gib_value = number / (1024 ** 3)
+        gib_value = number / (1024**3)
         return f"{gib_value:.{precision}f}"
 
     return _formatter
@@ -74,6 +76,7 @@ def _bool_formatter(value: Any) -> str:
         return ""
     return "Yes" if bool(value) else "No"
 
+
 def _list_formatter(*, max_chars: int = 16, sep: str = ", ") -> ValueFormatter:
     def _formatter(value: Any) -> str:
         if value is None:
@@ -83,6 +86,7 @@ def _list_formatter(*, max_chars: int = 16, sep: str = ", ") -> ValueFormatter:
         else:
             s = str(value)
         return s if len(s) <= max_chars else s[: max_chars - 1] + "…"
+
     return _formatter
 
 
@@ -125,7 +129,6 @@ def _supported_block_sizes(row: Row) -> Any:
     return None
 
 
-
 def _mapping_target(row: Row) -> str:
     for key in (
         "targetLabel",
@@ -147,7 +150,7 @@ def _mapping_target(row: Row) -> str:
 
 
 def _volume_pool(row: Row) -> str:
-    for key in ("poolId", "storagePoolId","volumeGroupRef"):
+    for key in ("poolId", "storagePoolId", "volumeGroupRef"):
         candidate = row.get(key)
         if candidate:
             return str(candidate)
@@ -184,6 +187,7 @@ def _raid_level(row: Row) -> str:
         return str(t)
 
     return ""
+
 
 # Use this pattern to add additional columns from top level keys as needed
 # Column("Read Cache", extractor=lambda r: r.get("cache", {}).get("readCacheActive"), formatter=_bool_formatter, justify="center")
@@ -229,8 +233,18 @@ CLI_TABLE_VIEWS: dict[str, TableView] = {
                 formatter=_bytes_formatter(precision=2),
                 justify="right",
             ),
-            Column("Cache (r)", extractor=lambda r: r.get("cache", {}).get("readCacheEnable"), formatter=_bool_formatter, justify="center"),
-            Column("Cache (w)", extractor=lambda r: r.get("cache", {}).get("writeCacheEnable"), formatter=_bool_formatter, justify="center"),
+            Column(
+                "Cache (r)",
+                extractor=lambda r: r.get("cache", {}).get("readCacheEnable"),
+                formatter=_bool_formatter,
+                justify="center",
+            ),
+            Column(
+                "Cache (w)",
+                extractor=lambda r: r.get("cache", {}).get("writeCacheEnable"),
+                formatter=_bool_formatter,
+                justify="center",
+            ),
             Column("Status", keys=("status", "state")),
         ),
         sort_key=lambda row: str(row.get("name") or row.get("label") or "").lower(),
@@ -239,7 +253,17 @@ CLI_TABLE_VIEWS: dict[str, TableView] = {
         title="Volume Mappings",
         columns=(
             Column("Mapping Ref", keys=("lunMappingRef", "mappingRef", "id")),
-            Column("Volume", keys=("mappableObjectName", "name", "label", "volumeName", "volumeRef", "mappableObjectId")),
+            Column(
+                "Volume",
+                keys=(
+                    "mappableObjectName",
+                    "name",
+                    "label",
+                    "volumeName",
+                    "volumeRef",
+                    "mappableObjectId",
+                ),
+            ),
             Column("Target", extractor=_mapping_target),
             Column("LUN", keys=("lun",), justify="right"),
         ),

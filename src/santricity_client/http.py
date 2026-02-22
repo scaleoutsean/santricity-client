@@ -1,4 +1,5 @@
 """HTTP utilities for SANtricity API access."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping
@@ -45,6 +46,8 @@ def request(
     params: Mapping[str, str] | None = None,
     headers: MutableMapping[str, str] | None = None,
     json_payload: Mapping[str, Any] | None = None,
+    data_payload: Any | None = None,
+    expect_json: bool = True,
     timeout: float | tuple[float, float] | None = None,
     verify: bool = True,
 ) -> HttpResponse:
@@ -56,9 +59,14 @@ def request(
         params=params,
         headers=headers,
         json=json_payload,
+        data=data_payload,
         timeout=timeout,
         verify=verify,
     )
     ensure_success(response)
-    data = parse_json(response) if response.content else None
+
+    data: Any = None
+    if response.content:
+        data = parse_json(response) if expect_json else response.text
+
     return HttpResponse(status_code=response.status_code, data=data, headers=response.headers)

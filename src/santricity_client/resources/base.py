@@ -1,4 +1,5 @@
 """Common helpers for resource wrappers."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -37,6 +38,26 @@ class ResourceBase:
     def _delete(self, path: str, *, system_scope: bool = True) -> Any:
         return self._client.request("DELETE", path, system_scope=system_scope)
 
+    def _symbol_request(
+        self,
+        symbol_path: str,
+        *,
+        method: str = "POST",
+        params: Mapping[str, str] | None = None,
+        payload_data: Any | None = None,
+        expect_json: bool = False,
+    ) -> Any:
+        from ..config import SYMBOL_LEGACY_PATH
+
+        full_path = f"/{SYMBOL_LEGACY_PATH}/{symbol_path.lstrip('/')}"
+        return self._client.request(
+            method,
+            full_path,
+            params=params,
+            data_payload=payload_data,
+            expect_json=expect_json,
+        )
+
     def _request_with_fallback(
         self,
         method: str,
@@ -58,9 +79,7 @@ class ResourceBase:
             )
         except RequestError as exc:
             can_retry = (
-                fallback_path
-                and fallback_path != path
-                and exc.status_code in recoverable_statuses
+                fallback_path and fallback_path != path and exc.status_code in recoverable_statuses
             )
             if can_retry:
                 return self._client.request(

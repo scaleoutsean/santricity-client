@@ -28,7 +28,6 @@ from .resources import (
     VolumesResource,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -92,6 +91,8 @@ class SANtricityClient:
         *,
         params: Mapping[str, str] | None = None,
         json_payload: Mapping[str, Any] | None = None,
+        data_payload: Any | None = None,
+        expect_json: bool = True,
         system_scope: bool = True,
     ) -> Any:
         url = self._resolve_url(path, system_scope=system_scope)
@@ -104,6 +105,8 @@ class SANtricityClient:
             params=merged_params,
             headers=headers,
             json_payload=json_payload,
+            data_payload=data_payload,
+            expect_json=expect_json,
         )
         return response.data
 
@@ -185,7 +188,11 @@ class SANtricityClient:
                 if vol:
                     vol_name = vol.get("name") or vol.get("label")
                     if not vol_name:
-                        for fallback_key in ("volumeName", "mappableObjectName", "mappableObjectLabel"):
+                        for fallback_key in (
+                            "volumeName",
+                            "mappableObjectName",
+                            "mappableObjectLabel",
+                        ):
                             candidate = vol.get(fallback_key)
                             if candidate:
                                 vol_name = candidate
@@ -198,7 +205,9 @@ class SANtricityClient:
                             row.setdefault("capacity", vol.get(cap_key))
                             break
                     # pool lookup
-                    pool_id = vol.get("volumeGroupRef") or vol.get("poolId") or vol.get("storagePoolId")
+                    pool_id = (
+                        vol.get("volumeGroupRef") or vol.get("poolId") or vol.get("storagePoolId")
+                    )
                     if pool_id:
                         pool = pool_by_id.get(str(pool_id))
                         if pool:
@@ -276,7 +285,13 @@ class SANtricityClient:
                         break
 
             if not best_target_label:
-                for fallback_key in ("targetLabel", "targetName", "hostGroupLabel", "clusterName", "hostLabel"):
+                for fallback_key in (
+                    "targetLabel",
+                    "targetName",
+                    "hostGroupLabel",
+                    "clusterName",
+                    "hostLabel",
+                ):
                     candidate = row.get(fallback_key)
                     if candidate:
                         best_target_label = str(candidate)
@@ -362,6 +377,8 @@ class SANtricityClient:
         params: Mapping[str, str] | None,
         headers: MutableMapping[str, str],
         json_payload: Mapping[str, Any] | None,
+        data_payload: Any | None = None,
+        expect_json: bool = True,
     ) -> HttpResponse:
         try:
             return http_request(
@@ -371,6 +388,8 @@ class SANtricityClient:
                 params=params,
                 headers=headers,
                 json_payload=json_payload,
+                data_payload=data_payload,
+                expect_json=expect_json,
                 timeout=self.config.timeout,
                 verify=self.config.verify_ssl,
             )
