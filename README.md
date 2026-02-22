@@ -163,6 +163,19 @@ santricity volumes create \
 
 The CLI validates uniqueness by default. Supply `--allow-duplicate-name` only when you intentionally need two volumes with the same label.
 
+
+```python3
+client.volumes.expand(
+    volume_ref="020000006D039EA0...", 
+    expansion_size=100, 
+    unit="gib"
+)
+```
+
+SANtricity accepts bytes and other size units. This client accepts `mb|gb|tb|mib|gib|tib` and converts to bytes in volume expansion payload:
+- Decimal units (e.g., 10 gb -> 10 * 1000^3) (`mb`, `gb`, `tb`)
+- Binary units (e.g., 10 gib -> 10 * 1024^3) (`mib`, `gib`, `tib`)
+
 ### Create host 
 
 This client currently suppors one initiator per host, which seems to be the norm anyway.

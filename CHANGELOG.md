@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.1.2
+
+- Volume resize 
+
 ## 0.1.1
 
 - NVMe-oF support for `hosts` object
