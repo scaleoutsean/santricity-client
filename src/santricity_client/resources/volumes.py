@@ -26,7 +26,9 @@ class VolumesResource(ResourceBase):
     def map_to_host(self, volume_ref: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         return self._post(f"/volumes/{volume_ref}/mappings", payload)
 
-    def expand(self, volume_ref: str, expansion_size: float | int, unit: str = "bytes") -> dict[str, Any]:
+    def expand(
+        self, volume_ref: str, expansion_size: float | int, unit: str = "bytes"
+    ) -> dict[str, Any]:
         """Expand a volume to a new target capacity.
 
         Args:
@@ -50,18 +52,15 @@ class VolumesResource(ResourceBase):
             "gib": 1024**3,
             "tib": 1024**4,
         }
-        
+
         normalized_unit = unit.lower()
         if normalized_unit not in unit_multipliers:
             raise ValueError(
                 f"Invalid unit: {unit}. Supported units: {', '.join(unit_multipliers.keys())}"
             )
-            
+
         size_bytes = int(expansion_size * unit_multipliers[normalized_unit])
-        
-        payload = {
-            "expansionSize": size_bytes,
-            "sizeUnit": "bytes"
-        }
-        
+
+        payload = {"expansionSize": size_bytes, "sizeUnit": "bytes"}
+
         return self._post(f"/volumes/{volume_ref}/expand", payload)

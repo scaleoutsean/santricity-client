@@ -78,7 +78,7 @@ pip install -e .[cli]
 
 ### Storage-System Scoping
 
-Every SANtricity v2 request must include the storage-system identifier (WWN) in the path: `/devmgr/v2/storage-systems/<wwn>/...`. Pass the WWN via the `system_id` argument (Python) or `--system-id` flag (CLI). If you omit it, the client auto-discovers the first entry from `/storage-systems`, but providing the explicit WWN avoids accidentally targeting the implicit "system 1" wildcard.
+Every SANtricity v2 request must include the storage-system identifier (WWN) in the path: `/devmgr/v2/storage-systems/<wwn>/...`. Pass the WWN via the `system_id` argument (Python) or `--system-id` flag (CLI). If you omit it, the client auto-discovers the first entry from `/storage-systems`, but providing the explicit WWN avoids accidentally targeting the implicit "system 1" wildcard which has no practical consequence except that URLs look generic. It is advisable to both specify, and check, that the targeted system ID is correct.
 
 Fetch the WWN once per session:
 
@@ -203,6 +203,8 @@ client.hosts.add_initiator(
 ```
 
 Once hosts are added, hosts groups can be formed without protocol-specific information.
+
+FC WWNs might work, but is not actively tested.
 
 ### Power-user extras
 

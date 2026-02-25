@@ -166,7 +166,7 @@ def _raid_level(row: Row) -> str:
 
     Preference order:
     - row['raidLevel'] if present
-    - row['extents'][0]['raidLevel'] if extents is a non-empty sequence and first extent is a mapping
+    - row['extents'][0]['raidLevel'] if extents is non-empty and first extent is a mapping
     - row['type']
     - empty string
     """
@@ -190,7 +190,8 @@ def _raid_level(row: Row) -> str:
 
 
 # Use this pattern to add additional columns from top level keys as needed
-# Column("Read Cache", extractor=lambda r: r.get("cache", {}).get("readCacheActive"), formatter=_bool_formatter, justify="center")
+# Column("Read Cache", extractor=lambda r: r.get("cache", {}).get("readCacheActive"),
+#        formatter=_bool_formatter, justify="center")
 
 CLI_TABLE_VIEWS: dict[str, TableView] = {
     "pools.list": TableView(

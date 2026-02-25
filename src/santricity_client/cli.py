@@ -264,7 +264,10 @@ def _volume_create_options() -> dict[str, Any]:  # pragma: no cover - helper ind
         "extras": typer.Option(
             None,
             "--extras",
-            help="Comma-separated key=value pairs to include in the payload (e.g. enableCache=True,someVar=1).",
+            help=(
+                "Comma-separated key=value pairs to include in the payload "
+                "(e.g. enableCache=True,someVar=1)."
+            ),
             show_default=False,
         ),
     }

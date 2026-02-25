@@ -18,6 +18,20 @@ class PoolsResource(ResourceBase):
     def get(self, pool_ref: str) -> dict[str, Any]:
         return self._get(f"/storage-pools/{pool_ref}")
 
+    def get_by_name(self, name: str) -> dict[str, Any] | None:
+        """Find a storage pool by its name or label.
+
+        Args:
+            name: The name or label of the storage pool.
+
+        Returns:
+            The pool object if found, else None.
+        """
+        for pool in self.list():
+            if pool.get("label") == name or pool.get("name") == name:
+                return pool
+        return None
+
     def create_volume(self, pool_ref: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         body = dict(payload)
         body.setdefault("poolId", pool_ref)
