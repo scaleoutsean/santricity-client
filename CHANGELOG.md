@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.1.4
+
+- Volume helper: client-side filter to find-volume-by-name helper, takes optional pool name 
+
 ## 0.1.3
 
 - Add create, update, delete support for hosts and host groups (iSCSI, NVMe/RoCE; with FC accepted (but not tested) as well)

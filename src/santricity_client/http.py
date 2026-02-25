@@ -49,7 +49,7 @@ def request(
     data_payload: Any | None = None,
     expect_json: bool = True,
     timeout: float | tuple[float, float] | None = None,
-    verify: bool = True,
+    verify: bool | str = True,
 ) -> HttpResponse:
     """Make a request and return a parsed response envelope."""
 
