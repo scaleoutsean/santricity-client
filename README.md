@@ -36,7 +36,7 @@ from santricity_client import SANtricityClient
 from santricity_client.auth.basic import BasicAuth
 
 client = SANtricityClient(
-    base_url="https://array01.example.com/devmgr/v2",
+    base_url="https://array01.example.com:8443/devmgr/v2",
     auth_strategy=BasicAuth(username="admin", password="secret"),
     release_version="11.94",
     system_id="600A098000F63714000000005E79C17C",  # storage-system WWN (see below)
@@ -159,12 +159,22 @@ santricity volumes create \
     --size 10 \
     --size-unit gb \
     --require-unique-name
+
+# Delete a volume
+santricity volumes delete <volume-ref>
+
+# Expand a volume to 50GB (new total size)
+santricity volumes expand <volume-ref> 50 --unit gb
+
+# Delete a mapping
+santricity mappings delete <mapping-ref>
 ```
 
-The CLI validates uniqueness by default. Supply `--allow-duplicate-name` only when you intentionally need two volumes with the same label.
+The CLI validates object name uniqueness (within the same category) by default.
 
+Using from Python, expand a volume to 100 GB.
 
-```python3
+```python
 client.volumes.expand(
     volume_ref="020000006D039EA0...", 
     expansion_size=100, 
@@ -204,7 +214,7 @@ client.hosts.add_initiator(
 
 Once hosts are added, hosts groups can be formed without protocol-specific information.
 
-FC WWNs might work, but is not actively tested.
+FC WWNs might work, but FC is not actively tested.
 
 ### Power-user extras
 
@@ -227,7 +237,6 @@ Notes:
 - Extras are merged into the generated payload and take precedence over named CLI options (power-user convenience).
 - For complex or nested payloads prefer `--payload` (path to a JSON file) or using `--json` with programmatic clients.
  - If you supply size-related values via `--extras`, provide sizes in bytes (the CLI's `--size`/`--size-unit` helpers are not applied to extras).
-
 
 Audit duplicate names at any time:
 

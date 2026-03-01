@@ -719,6 +719,95 @@ def volumes_create(
     _echo_json(result)
 
 
+@volumes_app.command("delete")
+def volumes_delete(
+    volume_ref: str = typer.Argument(..., help="The ID/Ref of the volume to delete."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Skip confirmation prompt.", show_default=True
+    ),
+) -> None:
+    """Delete a volume."""
+
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        if not force:
+            typer.confirm(f"Are you sure you want to delete volume '{volume_ref}'?", abort=True)
+
+        try:
+            result = client.volumes.delete(volume_ref)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+
+    typer.secho(f"Volume '{volume_ref}' deleted.", fg=typer.colors.GREEN)
+    if result:
+        _echo_json(result)
+
+
+@volumes_app.command("expand")
+def volumes_expand(
+    volume_ref: str = typer.Argument(..., help="The ID/Ref of the volume to expand."),
+    size: float = typer.Argument(..., help="New total capacity of the volume."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    unit: str = typer.Option(
+        "gb",
+        "--unit",
+        help="Unit for size (bytes, kb, mb, gb, tb).",
+        show_default=True,
+    ),
+) -> None:
+    """Expand a volume to a new target capacity."""
+
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            result = client.volumes.expand(volume_ref, size, unit=unit)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+
+    _echo_json(result)
+
+
 @mappings_app.command("list")
 def mappings_list(
     base_url: str = _SHARED_OPTIONS["base_url"],
@@ -861,3 +950,46 @@ def mappings_remap(
             return
 
     _echo_json(result)
+
+
+@mappings_app.command("delete")
+def mappings_delete(
+    map_ref: str = typer.Argument(..., help="The ID/Ref of the mapping to remove."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Skip confirmation prompt.", show_default=True
+    ),
+) -> None:
+    """Remove a mapping."""
+
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        if not force:
+            typer.confirm(f"Are you sure you want to delete mapping '{map_ref}'?", abort=True)
+
+        try:
+            client.mappings.delete(map_ref)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+
+    typer.secho(f"Mapping '{map_ref}' deleted.", fg=typer.colors.GREEN)
