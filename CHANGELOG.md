@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.1.8
+
+- Fix: correct querying of NVMe and ISCSI settings
+
 ## 0.1.7
 
 - CLI: add repo group and snapshot group create commands
