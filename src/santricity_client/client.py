@@ -84,6 +84,25 @@ class SANtricityClient:
         self.close()
 
     # Public API --------------------------------------------------------------
+    @property
+    def system_id(self) -> str:
+        """Return the active storage-system identifier.
+
+        If no system id was provided at construction time, this triggers
+        one-time auto-discovery via ``GET /storage-systems``.
+        """
+
+        return self._get_system_id()
+
+    @system_id.setter
+    def system_id(self, value: str) -> None:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("system_id cannot be empty")
+        self._system_id = normalized
+        self.config.system_id = normalized
+        self._scoped_prefix_cache = None
+
     def request(
         self,
         method: str,

@@ -51,7 +51,7 @@ for pool in client.pools.list():
     print(label, total_size, used_space, free_space)
 ```
 
-For resources not yet implemented in the library, use `client.request()` directly — it handles authentication, system scoping, and error translation the same way the built-in resource methods do:
+For resources not yet implemented in the library, use `client.request()` directly. The library handles authentication, system scoping, and error translation the same way the built-in resource methods do:
 
 ```python
 # GET /storage-systems/<system_id>/something-else
@@ -171,7 +171,7 @@ List snapshots (without certificate validation):
 ```bash
 santricity snapshots list-images \ 
     --base-url https://array:8444/devmgr/v2 \
-    --username admin --password infiniti --no-verify
+    --username admin --password secret --no-verify
 ```
 
 Create a volume:

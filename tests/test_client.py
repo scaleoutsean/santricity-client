@@ -70,6 +70,57 @@ def test_client_discovers_system_id_when_missing(requests_mock):
     assert hosts[0]["label"] == "hostA"
 
 
+def test_system_id_property_reads_explicit_value():
+    client = SANtricityClient(
+        base_url="https://array/devmgr/v2",
+        auth_strategy=BasicAuth("u", "p"),
+        system_id="demo123",
+    )
+
+    assert client.system_id == "demo123"
+
+
+def test_system_id_property_discovers_when_missing(requests_mock):
+    requests_mock.get(
+        "https://array/devmgr/v2/storage-systems",
+        json=[{"wwn": "auto456"}],
+    )
+    client = SANtricityClient(
+        base_url="https://array/devmgr/v2",
+        auth_strategy=BasicAuth("u", "p"),
+    )
+
+    assert client.system_id == "auto456"
+
+
+def test_system_id_property_setter_updates_cache_and_config(requests_mock):
+    client = SANtricityClient(
+        base_url="https://array/devmgr/v2",
+        auth_strategy=BasicAuth("u", "p"),
+        system_id="old",
+    )
+    client.system_id = "new"
+    requests_mock.get(
+        "https://array/devmgr/v2/storage-systems/new/storage-pools",
+        json=[],
+    )
+
+    client.pools.list()
+
+    assert client.config.system_id == "new"
+
+
+def test_system_id_property_setter_rejects_empty():
+    client = SANtricityClient(
+        base_url="https://array/devmgr/v2",
+        auth_strategy=BasicAuth("u", "p"),
+        system_id="demo",
+    )
+
+    with pytest.raises(ValueError):
+        client.system_id = "   "
+
+
 def test_request_logging_includes_system_id(caplog, requests_mock):
     client = SANtricityClient(
         base_url="https://array/devmgr/v2",

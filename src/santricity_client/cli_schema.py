@@ -317,7 +317,7 @@ CLI_TABLE_VIEWS: dict[str, TableView] = {
         ),
         sort_key=_sort_label,
     ),
-    "snapshots.list-repos": TableView(
+    "snapshots.list-repo-groups": TableView(
         title="Repository Volumes (Concat)",
         columns=(
             Column("Concat Vol Ref", keys=("concatVolRef", "id")),

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented here.
 
+## 0.1.7
+
+- CLI: add repo group and snapshot group create commands
+- Fix: make `system_id` public
+
 ## 0.1.6
 
 - CLI: add snapshot create commands

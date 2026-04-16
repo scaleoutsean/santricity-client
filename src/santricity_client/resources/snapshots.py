@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from ..exceptions import RequestError
 from .base import ResourceBase
 
 
@@ -17,17 +18,39 @@ class SnapshotsResource(ResourceBase):
     def create_group(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         return self._post("/snapshot-groups", payload)
 
+    def create_snapshot_group(self, payload: Mapping[str, Any]) -> dict[str, Any]:
+        """Create a snapshot group from a full payload."""
+        return self.create_group(payload)
+
     def list_images(self, group_ref: str) -> list[dict[str, Any]]:
         """List snapshot images scoped to a specific snapshot group."""
         return self._get(f"/snapshot-groups/{group_ref}/images")
 
     def create_image(self, group_ref: str) -> dict[str, Any]:
-        """Create a new snapshot image in the given snapshot group."""
-        return self._post(f"/snapshot-groups/{group_ref}/images", {})
+        """Create a new snapshot image for a snapshot group id.
+
+        Preferred endpoint is POST /snapshot-images with a groupId payload,
+        matching the current SANtricity UI/API workflow. Fallback preserves
+        compatibility with arrays exposing the group-scoped images endpoint.
+        """
+        try:
+            return self._post("/snapshot-images", {"groupId": group_ref})
+        except RequestError as exc:
+            if exc.status_code in (400, 404, 405):
+                return self._post(f"/snapshot-groups/{group_ref}/images", {})
+            raise
+
+    def create_snapshot(self, group_ref: str) -> dict[str, Any]:
+        """Create a snapshot image for the given snapshot group ref."""
+        return self.create_image(group_ref)
 
     def delete_image(self, image_ref: str) -> None:
         """Delete a snapshot image by its pitRef / id."""
         self._delete(f"/snapshot-images/{image_ref}")
+
+    def delete_snapshot(self, snapshot_ref: str) -> None:
+        """Delete a snapshot image by snapshot ref."""
+        self.delete_image(snapshot_ref)
 
     def list_all_images(self) -> list[dict[str, Any]]:
         """List all snapshot images across all snapshot groups."""
@@ -40,6 +63,25 @@ class SnapshotsResource(ResourceBase):
     def list_repositories(self) -> list[dict[str, Any]]:
         """List concatenated repository volumes backing snapshot groups and linked clones."""
         return self._get("/repositories/concat")
+
+    def create_repo_group_single(
+        self,
+        base_volume_ref: str,
+        percent_capacity: int,
+        *,
+        use_free_repository_volumes: bool = False,
+        concat_volume_type: str = "snapshot",
+    ) -> list[dict[str, Any]]:
+        """Create repo candidate(s) for a single base volume."""
+        payload: dict[str, Any] = {
+            "useFreeRepositoryVolumes": use_free_repository_volumes,
+            "candidateRequest": {
+                "baseVolumeRef": base_volume_ref,
+                "percentCapacity": percent_capacity,
+                "concatVolumeType": concat_volume_type,
+            },
+        }
+        return self._post("/repositories/concat/single", payload)
 
     def list_group_repo_utilization(self) -> list[dict[str, Any]]:
         """List repository utilization for each snapshot group."""
