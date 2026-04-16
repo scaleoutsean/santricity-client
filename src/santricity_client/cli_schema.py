@@ -270,6 +270,125 @@ CLI_TABLE_VIEWS: dict[str, TableView] = {
         ),
         sort_key=lambda row: str(row.get("mappingRef") or row.get("id") or ""),
     ),
+    "snapshots.list-groups": TableView(
+        title="Snapshot Groups",
+        columns=(
+            Column("Name", keys=("name", "label")),
+            Column("Pit Group Ref", keys=("pitGroupRef", "id")),
+            Column("Base Volume", keys=("baseVolume",)),
+            Column("Snapshots", keys=("snapshotCount",), justify="right"),
+            Column(
+                "Repo Cap (GiB)",
+                keys=("repositoryCapacity",),
+                formatter=_bytes_formatter(precision=2),
+                justify="right",
+            ),
+            Column("CG", keys=("consistencyGroup",), formatter=_bool_formatter, justify="center"),
+            Column("Status", keys=("status",)),
+        ),
+        sort_key=_sort_label,
+    ),
+    "snapshots.list-images": TableView(
+        title="Snapshot Images",
+        columns=(
+            Column("Snapshot Group", keys=("snapshotGroupName",)),
+            Column("Pit Ref", keys=("pitRef", "id")),
+            Column("Seq #", keys=("pitSequenceNumber",), justify="right"),
+            Column("Timestamp", keys=("pitTimestamp",), justify="right"),
+            Column("Created By", keys=("creationMethod",)),
+            Column("Repo Use %", keys=("repositoryCapacityUtilization",), justify="right"),
+            Column("Status", keys=("status",)),
+        ),
+    ),
+    "snapshots.list-volumes": TableView(
+        title="Snapshot Volumes",
+        columns=(
+            Column("Name", keys=("name", "label")),
+            Column("View Ref", keys=("viewRef", "id")),
+            Column("Base Vol", keys=("baseVol",)),
+            Column("Access", keys=("accessMode",)),
+            Column(
+                "Repo Cap (GiB)",
+                keys=("repositoryCapacity",),
+                formatter=_bytes_formatter(precision=2),
+                justify="right",
+            ),
+            Column("Status", keys=("status",)),
+        ),
+        sort_key=_sort_label,
+    ),
+    "snapshots.list-repos": TableView(
+        title="Repository Volumes (Concat)",
+        columns=(
+            Column("Concat Vol Ref", keys=("concatVolRef", "id")),
+            Column("Base Object ID", keys=("baseObjectId",)),
+            Column("Base Object Type", keys=("baseObjectType",)),
+            Column("Members", keys=("memberCount",), justify="right"),
+            Column(
+                "Aggregate Cap (GiB)",
+                keys=("aggregateCapacity",),
+                formatter=_bytes_formatter(precision=2),
+                justify="right",
+            ),
+            Column("Status", keys=("status",)),
+        ),
+    ),
+    "snapshots.list-group-util": TableView(
+        title="Snapshot Group Repository Utilization",
+        columns=(
+            Column("Group Ref", keys=("groupRef",)),
+            Column(
+                "Used (GiB)",
+                keys=("pitGroupBytesUsed",),
+                formatter=_bytes_formatter(precision=2),
+                justify="right",
+            ),
+            Column(
+                "Available (GiB)",
+                keys=("pitGroupBytesAvailable",),
+                formatter=_bytes_formatter(precision=2),
+                justify="right",
+            ),
+        ),
+    ),
+    "snapshots.list-volume-util": TableView(
+        title="Snapshot Volume Repository Utilization",
+        columns=(
+            Column("View Ref", keys=("viewRef",)),
+            Column(
+                "Used (GiB)",
+                keys=("viewBytesUsed",),
+                formatter=_bytes_formatter(precision=2),
+                justify="right",
+            ),
+            Column(
+                "Available (GiB)",
+                keys=("viewBytesAvailable",),
+                formatter=_bytes_formatter(precision=2),
+                justify="right",
+            ),
+        ),
+    ),
+    "snapshots.list-cg-members": TableView(
+        title="Consistency Group Member Volumes",
+        columns=(
+            Column("Volume Name", keys=("volumeName", "label")),
+            Column("Volume Ref", keys=("volumeRef",)),
+            Column("CG ID", keys=("consistencyGroupId",)),
+            Column("Pit Group Ref", keys=("pitGroupRef",)),
+        ),
+        sort_key=lambda row: str(row.get("volumeName") or row.get("label") or "").lower(),
+    ),
+    "snapshots.list-schedules": TableView(
+        title="Snapshot Schedules",
+        columns=(
+            Column("Snapshot Group", keys=("snapshotGroupName",)),
+            Column("Sched Ref", keys=("schedRef", "id")),
+            Column("Status", keys=("scheduleStatus",)),
+            Column("Next Run", keys=("nextRunTime",), justify="right"),
+        ),
+        sort_key=lambda row: str(row.get("snapshotGroupName") or "").lower(),
+    ),
     "hosts.membership": TableView(
         title="Host Membership",
         columns=(

@@ -10,6 +10,7 @@ The goal is to provide a consistent abstraction for the most frequently used sto
 - Volume
 - Host(s)
 - Volume mappings
+- Snapshots and Linked Clones
 
 Additional features can be added as required.
 
@@ -49,6 +50,25 @@ for pool in client.pools.list():
     free_space = pool.get("freeSpace")
     print(label, total_size, used_space, free_space)
 ```
+
+For resources not yet implemented in the library, use `client.request()` directly — it handles authentication, system scoping, and error translation the same way the built-in resource methods do:
+
+```python
+# GET /storage-systems/<system_id>/something-else
+data = client.request("GET", "/something-else")
+
+# POST with a JSON body
+result = client.request(
+    "POST",
+    "/something-else",
+    json_payload={"key": "value"},
+)
+
+# Path outside the system scope (e.g. /devmgr/v2/storage-systems)
+systems = client.request("GET", "/storage-systems", system_scope=False)
+```
+
+`system_scope=True` (the default) prepends `/storage-systems/<system_id>` to the path automatically. Set it to `False` for top-level SANtricity endpoints.
 
 ## Project Layout
 
@@ -127,7 +147,7 @@ Notes:
 
 ### CLI Examples
 
-In additoin to command-line flags, the CLI honors these environment variables for convenience:
+In addition to command-line flags, the CLI honors these environment variables for convenience:
 
 ```sh
 $ export SANTRICITY_BASE_URL=https://controller_b:8443/devmgr/v2
@@ -144,6 +164,14 @@ santricity pools list \
     --username admin \
     --password secret \
     --no-verify # skip TLS verification if needed
+```
+
+List snapshots (without certificate validation):
+
+```bash
+santricity snapshots list-images \ 
+    --base-url https://array:8444/devmgr/v2 \
+    --username admin --password infiniti --no-verify
 ```
 
 Create a volume:
@@ -188,7 +216,7 @@ SANtricity accepts bytes and other size units. This client accepts `mb|gb|tb|mib
 
 ### Create host 
 
-This client currently suppors one initiator per host, which seems to be the norm anyway.
+This client currently supports one initiator per host, which seems to be the norm anyway.
 
 iSCSI hosts can be created with IQN and optionally client-side CHAP credentials:
 
@@ -274,7 +302,7 @@ santricity mappings create \
     --host app-01
 ```
 
-The command accepts exactly one of `--host`, `--host-ref`, `--host-group`, or `--cluster-ref`. Mapping directly to a host that resides inside a host group is valid—the host simply receives an individual LUN assignment—while mapping to the host group (`--host-group`/`--cluster-ref`) shares the volume across every host in that cluster.
+The command accepts exactly one of `--host`, `--host-ref`, `--host-group`, or `--cluster-ref`. Mapping directly to a host that resides inside a host group is valid - the host simply receives an individual LUN assignment - while mapping to the host group (`--host-group`/`--cluster-ref`) shares the volume across every host in that cluster.
 
 Review host membership to decide which scope to target:
 

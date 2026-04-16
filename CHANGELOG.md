@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.1.5
+
+- Snapshots: list for most snapshot-related commands, and create/delete snapshot for individual volume.
+
 ## 0.1.4
 
 - Volume helper: client-side filter to find-volume-by-name helper, takes optional pool name 
@@ -22,5 +26,5 @@ All notable changes to this project will be documented here.
 
 - NVMe-oF support for (GET) `hosts` object
 
-## v0.1.0
+## 0.1.0
 - Initial release aimed at common daily tasks and manipulating their objects (volume, host, mappings), includes a client library and CLI

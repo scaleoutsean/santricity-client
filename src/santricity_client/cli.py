@@ -30,11 +30,13 @@ app = typer.Typer(help="SANtricity storage management CLI.", no_args_is_help=Tru
 
 hosts_app = typer.Typer(help="Host operations.")
 pools_app = typer.Typer(help="Pool operations.")
+snapshots_app = typer.Typer(help="Snapshot group, image, volume, and schedule operations.")
 volumes_app = typer.Typer(help="Volume operations.")
 mappings_app = typer.Typer(help="Volume mapping operations.")
 system_app = typer.Typer(help="System metadata operations.")
 app.add_typer(hosts_app, name="hosts")
 app.add_typer(pools_app, name="pools")
+app.add_typer(snapshots_app, name="snapshots")
 app.add_typer(volumes_app, name="volumes")
 app.add_typer(mappings_app, name="mappings")
 app.add_typer(system_app, name="system")
@@ -535,6 +537,238 @@ def pools_list(
             _handle_request_error(exc)
             return
     _present_output(pools, view_id="pools.list", json_output=output_json)
+
+
+def _snapshot_list_command(
+    endpoint_method_name: str,
+    view_id: str,
+    base_url: str,
+    auth: str,
+    username: str | None,
+    password: str | None,
+    token: str | None,
+    verify_ssl: bool,
+    cert_path: Path | None,
+    timeout: float,
+    release_version: str | None,
+    system_id: str | None,
+    output_json: bool,
+) -> None:
+    """Shared implementation for all snapshot flat-list commands."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            items = getattr(client.snapshots, endpoint_method_name)()
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    _present_output(items, view_id=view_id, json_output=output_json)
+
+
+@snapshots_app.command("list-groups")
+def snapshots_list_groups(
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    output_json: bool = _SHARED_OPTIONS["output_json"],
+) -> None:
+    """List snapshot groups."""
+    _snapshot_list_command("list_groups", "snapshots.list-groups", base_url, auth, username, password, token, verify_ssl, cert_path, timeout, release_version, system_id, output_json)
+
+
+@snapshots_app.command("list-images")
+def snapshots_list_images(
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    output_json: bool = _SHARED_OPTIONS["output_json"],
+) -> None:
+    """List all snapshot images across all snapshot groups."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            images = client.snapshots.list_all_images()
+            groups = client.snapshots.list_groups()
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    group_name_by_ref: dict[str, str] = {
+        g["pitGroupRef"]: (g.get("name") or g.get("label") or g["pitGroupRef"])
+        for g in groups
+        if "pitGroupRef" in g
+    }
+    for image in images:
+        pgr = image.get("pitGroupRef")
+        image["snapshotGroupName"] = group_name_by_ref.get(pgr, pgr or "")
+    _present_output(images, view_id="snapshots.list-images", json_output=output_json)
+
+
+@snapshots_app.command("list-volumes")
+def snapshots_list_volumes(
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    output_json: bool = _SHARED_OPTIONS["output_json"],
+) -> None:
+    """List snapshot volumes (linked clones and read-only views)."""
+    _snapshot_list_command("list_volumes", "snapshots.list-volumes", base_url, auth, username, password, token, verify_ssl, cert_path, timeout, release_version, system_id, output_json)
+
+
+@snapshots_app.command("list-repos")
+def snapshots_list_repos(
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    output_json: bool = _SHARED_OPTIONS["output_json"],
+) -> None:
+    """List concatenated repository volumes backing snapshot groups and linked clones."""
+    _snapshot_list_command("list_repositories", "snapshots.list-repos", base_url, auth, username, password, token, verify_ssl, cert_path, timeout, release_version, system_id, output_json)
+
+
+@snapshots_app.command("list-group-util")
+def snapshots_list_group_util(
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    output_json: bool = _SHARED_OPTIONS["output_json"],
+) -> None:
+    """List repository utilization for each snapshot group."""
+    _snapshot_list_command("list_group_repo_utilization", "snapshots.list-group-util", base_url, auth, username, password, token, verify_ssl, cert_path, timeout, release_version, system_id, output_json)
+
+
+@snapshots_app.command("list-volume-util")
+def snapshots_list_volume_util(
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    output_json: bool = _SHARED_OPTIONS["output_json"],
+) -> None:
+    """List repository utilization for snapshot volumes (linked clones)."""
+    _snapshot_list_command("list_volume_repo_utilization", "snapshots.list-volume-util", base_url, auth, username, password, token, verify_ssl, cert_path, timeout, release_version, system_id, output_json)
+
+
+@snapshots_app.command("list-cg-members")
+def snapshots_list_cg_members(
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    output_json: bool = _SHARED_OPTIONS["output_json"],
+) -> None:
+    """List volumes that are members of consistency groups."""
+    _snapshot_list_command("list_consistency_group_members", "snapshots.list-cg-members", base_url, auth, username, password, token, verify_ssl, cert_path, timeout, release_version, system_id, output_json)
+
+
+@snapshots_app.command("list-schedules")
+def snapshots_list_schedules(
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+    output_json: bool = _SHARED_OPTIONS["output_json"],
+) -> None:
+    """List snapshot schedules."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            schedules = client.snapshots.list_schedules()
+            groups = client.snapshots.list_groups()
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    group_name_by_ref: dict[str, str] = {
+        g["pitGroupRef"]: (g.get("name") or g.get("label") or g["pitGroupRef"])
+        for g in groups
+        if "pitGroupRef" in g
+    }
+    for sched in schedules:
+        target = sched.get("targetObject")
+        sched["snapshotGroupName"] = group_name_by_ref.get(target, target or "")
+    _present_output(schedules, view_id="snapshots.list-schedules", json_output=output_json)
 
 
 @volumes_app.command("list")
