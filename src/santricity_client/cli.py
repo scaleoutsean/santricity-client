@@ -26,14 +26,16 @@ from .auth.jwt import JWTAuth
 from .cli_schema import CLI_TABLE_VIEWS, TableView
 from .exceptions import AuthenticationError, RequestError, ResolutionError
 
-app = typer.Typer(help="SANtricity storage management CLI.", no_args_is_help=True)
+_HELP_SETTINGS = {"context_settings": {"help_option_names": ["-h", "--help"]}}
 
-hosts_app = typer.Typer(help="Host operations.")
-pools_app = typer.Typer(help="Pool operations.")
-snapshots_app = typer.Typer(help="Snapshot group, image, volume, and schedule operations.")
-volumes_app = typer.Typer(help="Volume operations.")
-mappings_app = typer.Typer(help="Volume mapping operations.")
-system_app = typer.Typer(help="System metadata operations.")
+app = typer.Typer(help="SANtricity storage management CLI.", no_args_is_help=True, **_HELP_SETTINGS)
+
+hosts_app = typer.Typer(help="Host operations.", **_HELP_SETTINGS)
+pools_app = typer.Typer(help="Pool operations.", **_HELP_SETTINGS)
+snapshots_app = typer.Typer(help="Snapshot group, image, volume, and schedule operations.", **_HELP_SETTINGS)
+volumes_app = typer.Typer(help="Volume operations.", **_HELP_SETTINGS)
+mappings_app = typer.Typer(help="Volume mapping operations.", **_HELP_SETTINGS)
+system_app = typer.Typer(help="System metadata operations.", **_HELP_SETTINGS)
 app.add_typer(hosts_app, name="hosts")
 app.add_typer(pools_app, name="pools")
 app.add_typer(snapshots_app, name="snapshots")
@@ -769,6 +771,76 @@ def snapshots_list_schedules(
         target = sched.get("targetObject")
         sched["snapshotGroupName"] = group_name_by_ref.get(target, target or "")
     _present_output(schedules, view_id="snapshots.list-schedules", json_output=output_json)
+
+
+@snapshots_app.command("create-image")
+def snapshots_create_image(
+    group_ref: str = typer.Argument(..., help="Snapshot group ref (pitGroupRef) to snapshot."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Create a new snapshot image in a snapshot group."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            image = client.snapshots.create_image(group_ref)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    _echo_json(image)
+
+
+@snapshots_app.command("delete-image")
+def snapshots_delete_image(
+    image_ref: str = typer.Argument(..., help="Snapshot image ref (pitRef / id) to delete."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Delete a snapshot image by its ref."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            client.snapshots.delete_image(image_ref)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    typer.secho(f"Snapshot image {image_ref!r} deleted.", fg=typer.colors.GREEN)
 
 
 @volumes_app.command("list")

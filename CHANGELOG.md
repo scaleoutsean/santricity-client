@@ -2,9 +2,14 @@
 
 All notable changes to this project will be documented here.
 
+## 0.1.6
+
+- CLI: add snapshot create commands
+- Add `-h` as alias for `--help`
+
 ## 0.1.5
 
-- Snapshots: list for most snapshot-related commands, and create/delete snapshot for individual volume.
+- Snapshots: list for most snapshot-related commands, and create/delete snapshot for individual volumes
 
 ## 0.1.4
 
