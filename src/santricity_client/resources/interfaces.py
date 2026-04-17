@@ -27,19 +27,14 @@ class InterfacesResource(ResourceBase):
     def get_nvme_target_settings(self) -> dict[str, Any]:
         """Get NVMeoF target settings, including the target NQN and portals.
 
-        The preferred endpoint is `/nvmeof/initiator-settings` on modern
-        arrays, with fallback to `/nvmeof/target-settings` for compatibility.
-        If the endpoint does not return portals, this method attempts to
+        This uses `/nvmeof/initiator-settings`. If the endpoint does not
+        return portals, this method attempts to
         discover portals by querying the controller interfaces.
 
         Returns:
             A dictionary containing targetRef, nodeName (NQN), and portals list.
         """
-        settings = self._request_with_fallback(
-            "GET",
-            "/nvmeof/initiator-settings",
-            fallback_path="/nvmeof/target-settings",
-        )
+        settings = self._get("/nvmeof/initiator-settings")
         if not settings.get("portals"):
             # Discover portals from interfaces
             portals = []

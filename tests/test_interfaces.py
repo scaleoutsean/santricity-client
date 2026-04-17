@@ -114,23 +114,3 @@ def test_get_nvme_target_settings_with_interface_discovery(requests_mock):
     assert 4421 in ports
 
 
-def test_get_nvme_target_settings_falls_back_to_legacy_target_settings(requests_mock):
-    client = build_client()
-    nqn = "nqn.1992-08.com.netapp:6000.6d039ea000493a9c00000000609943a4"
-    requests_mock.get(
-        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/nvmeof/initiator-settings",
-        status_code=404,
-        text='{"message":"Not Found"}',
-    )
-    requests_mock.get(
-        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/nvmeof/target-settings",
-        json={"targetRef": "legacy-nvme-target", "nodeName": {"nvmeNodeName": nqn}, "portals": []},
-    )
-    requests_mock.get(
-        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/interfaces",
-        json=[],
-    )
-
-    result = client.interfaces.get_nvme_target_settings()
-
-    assert result["nodeName"]["nvmeNodeName"] == nqn
