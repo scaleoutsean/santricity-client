@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented here.
 
+## 0.2.0
+
+- Add get_system_hostside_interfaces for interface
+- Fix: get NVMeoF initiator now just pass-through
+
 ## 0.1.9
 
 - Fix: remove failback path for NVMeoF initiator

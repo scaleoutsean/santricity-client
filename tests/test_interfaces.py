@@ -48,7 +48,7 @@ def test_get_iscsi_target_settings(requests_mock):
 
 
 def test_get_nvme_target_settings_with_interface_discovery(requests_mock):
-    """Test discovering NVMe portals from interfaces when initiator-settings is empty."""
+    """NVMe target settings are returned directly from initiator-settings."""
     client = build_client()
     nqn = "nqn.1992-08.com.netapp:5700.600a0b8000000000"
     requests_mock.get(
@@ -56,61 +56,25 @@ def test_get_nvme_target_settings_with_interface_discovery(requests_mock):
         json={"targetRef": "test-nvme-target", "nodeName": {"nvmeNodeName": nqn}, "portals": []},
     )
 
-    # EF600 style interface listing
+    result = client.interfaces.get_nvme_target_settings()
+    assert result["nodeName"]["nvmeNodeName"] == nqn
+    assert result["portals"] == []
+
+
+def test_get_system_hostside_interfaces_filters_non_hostside(requests_mock):
+    client = build_client()
     requests_mock.get(
         f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/interfaces",
         json=[
-            {
-                "interfaceRef": "interface-1",
-                "commandProtocolPropertiesList": {
-                    "commandProtocolProperties": [
-                        {
-                            "commandProtocol": "nvme",
-                            "nvmeProperties": {
-                                "nvmeofProperties": {
-                                    "roceV2Properties": {
-                                        "ipAddressData": {
-                                            "ipv4Data": {"ipv4Address": "192.168.10.101"}
-                                        },
-                                        "listeningPort": 4420,
-                                    }
-                                }
-                            },
-                        }
-                    ]
-                },
-            },
-            {
-                "interfaceRef": "interface-2",
-                "commandProtocolPropertiesList": {
-                    "commandProtocolProperties": [
-                        {
-                            "commandProtocol": "nvme",
-                            "nvmeProperties": {
-                                "nvmeofProperties": {
-                                    "ibProperties": {
-                                        "ipAddressData": {
-                                            "ipv4Data": {"ipv4Address": "192.168.10.102"}
-                                        },
-                                        "listeningPort": 4421,
-                                    }
-                                }
-                            },
-                        }
-                    ]
-                },
-            },
+            {"interfaceRef": "host-1", "channelType": "hostside"},
+            {"interfaceRef": "host-2", "channelType": "hostside"},
+            {"interfaceRef": "driveside-1", "channelType": "driveside"},
         ],
     )
 
-    result = client.interfaces.get_nvme_target_settings()
-    assert result["nodeName"]["nvmeNodeName"] == nqn
-    assert len(result["portals"]) == 2
-    addresses = [p["address"] for p in result["portals"]]
-    assert "192.168.10.101" in addresses
-    assert "192.168.10.102" in addresses
-    ports = [p["port"] for p in result["portals"]]
-    assert 4420 in ports
-    assert 4421 in ports
+    result = client.interfaces.get_system_hostside_interfaces()
+
+    refs = [item["interfaceRef"] for item in result]
+    assert refs == ["host-1", "host-2"]
 
 
