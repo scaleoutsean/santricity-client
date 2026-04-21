@@ -22,6 +22,14 @@ class SnapshotsResource(ResourceBase):
         """Create a snapshot group from a full payload."""
         return self.create_group(payload)
 
+    def delete_group(self, group_ref: str) -> None:
+        """Delete a snapshot group by pitGroupRef / id."""
+        self._delete(f"/snapshot-groups/{group_ref}")
+
+    def delete_snapshot_group(self, group_ref: str) -> None:
+        """Alias for deleting a snapshot group by reference."""
+        self.delete_group(group_ref)
+
     def list_images(self, group_ref: str) -> list[dict[str, Any]]:
         """List snapshot images scoped to a specific snapshot group."""
         return self._get(f"/snapshot-groups/{group_ref}/images")
@@ -64,7 +72,19 @@ class SnapshotsResource(ResourceBase):
         """List concatenated repository volumes backing snapshot groups and linked clones."""
         return self._get("/repositories/concat")
 
-    def create_repo_group_single(
+    def expand_repository(
+        self,
+        repository_ref: str,
+        expansion_candidate: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Expand a concat repository volume with a chosen candidate."""
+        payload: dict[str, Any] = {
+            "repositoryRef": repository_ref,
+            "expansionCandidate": dict(expansion_candidate),
+        }
+        return self._post(f"/repositories/concat/{repository_ref}/expand", payload)
+
+    def get_repo_group_candidates_single(
         self,
         base_volume_ref: str,
         percent_capacity: int,
@@ -72,7 +92,12 @@ class SnapshotsResource(ResourceBase):
         use_free_repository_volumes: bool = False,
         concat_volume_type: str = "snapshot",
     ) -> list[dict[str, Any]]:
-        """Create repo candidate(s) for a single base volume."""
+        """Return repo-group candidates for a single base volume.
+
+        SANtricity does not expose a standalone "create repository group" endpoint.
+        The candidate returned here is typically consumed by snapshot-group or
+        snapshot-volume creation requests.
+        """
         payload: dict[str, Any] = {
             "useFreeRepositoryVolumes": use_free_repository_volumes,
             "candidateRequest": {
@@ -82,6 +107,22 @@ class SnapshotsResource(ResourceBase):
             },
         }
         return self._post("/repositories/concat/single", payload)
+
+    def create_repo_group_single(
+        self,
+        base_volume_ref: str,
+        percent_capacity: int,
+        *,
+        use_free_repository_volumes: bool = False,
+        concat_volume_type: str = "snapshot",
+    ) -> list[dict[str, Any]]:
+        """Backward-compatible alias for repo-group candidate selection."""
+        return self.get_repo_group_candidates_single(
+            base_volume_ref=base_volume_ref,
+            percent_capacity=percent_capacity,
+            use_free_repository_volumes=use_free_repository_volumes,
+            concat_volume_type=concat_volume_type,
+        )
 
     def list_group_repo_utilization(self) -> list[dict[str, Any]]:
         """List repository utilization for each snapshot group."""

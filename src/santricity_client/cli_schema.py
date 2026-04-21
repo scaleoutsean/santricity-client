@@ -90,6 +90,16 @@ def _list_formatter(*, max_chars: int = 16, sep: str = ", ") -> ValueFormatter:
     return _formatter
 
 
+def _truncate_formatter(*, max_chars: int = 18) -> ValueFormatter:
+    def _formatter(value: Any) -> str:
+        if value is None:
+            return ""
+        text = str(value)
+        return text if len(text) <= max_chars else text[: max_chars - 1] + "…"
+
+    return _formatter
+
+
 def _first_present(*keys: str) -> ValueExtractor:
     def _extractor(row: Row) -> Any:
         for key in keys:
@@ -159,6 +169,35 @@ def _volume_pool(row: Row) -> str:
 
 def _sort_label(row: Row) -> str:
     return str(row.get("label") or row.get("name") or "").lower()
+
+
+def _hostside_interfaces(row: Row) -> list[Row]:
+    value = row.get("hostside_interfaces")
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, Mapping)]
+    return []
+
+
+def _hostside_ready_summary(row: Row) -> str:
+    interfaces = _hostside_interfaces(row)
+    if not interfaces:
+        return ""
+    ready_count = sum(1 for item in interfaces if item.get("is_command_ipv4_ready") is True)
+    return f"{ready_count}/{len(interfaces)}"
+
+
+def _hostside_protocol_summary(row: Row) -> str:
+    interfaces = _hostside_interfaces(row)
+    if not interfaces:
+        return ""
+    values = sorted(
+        {
+            str(item.get("command_provider") or item.get("protocol") or item.get("transport"))
+            for item in interfaces
+            if item.get("command_provider") or item.get("protocol") or item.get("transport")
+        }
+    )
+    return ", ".join(values)
 
 
 def _raid_level(row: Row) -> str:
@@ -275,6 +314,8 @@ CLI_TABLE_VIEWS: dict[str, TableView] = {
         columns=(
             Column("Name", keys=("name", "label")),
             Column("Pit Group Ref", keys=("pitGroupRef", "id")),
+            Column("Sched Owned", keys=("isScheduleOwned",), formatter=_bool_formatter, justify="center"),
+            Column("Sched Count", keys=("scheduleCount",), justify="right"),
             Column("Base Volume", keys=("baseVolume",)),
             Column("Snapshots", keys=("snapshotCount",), justify="right"),
             Column(
@@ -333,10 +374,31 @@ CLI_TABLE_VIEWS: dict[str, TableView] = {
             Column("Status", keys=("status",)),
         ),
     ),
+    "snapshots.list-repo-volumes": TableView(
+        title="Repository-related Volumes",
+        columns=(
+            Column("Name", keys=("label", "name")),
+            Column("Volume Ref", keys=("volumeRef", "id")),
+            Column("Use", keys=("volumeUse",)),
+            Column("Mapped", keys=("mapped",), formatter=_bool_formatter, justify="center"),
+            Column(
+                "Cap (GiB)",
+                keys=("totalSizeInBytes", "capacity", "reportedSize", "currentVolumeSize"),
+                formatter=_bytes_formatter(precision=2),
+                justify="right",
+            ),
+            Column("Pool Ref", keys=("volumeGroupRef",)),
+            Column("Status", keys=("status", "state")),
+        ),
+        sort_key=lambda row: str(row.get("label") or row.get("name") or "").lower(),
+    ),
     "snapshots.list-group-util": TableView(
         title="Snapshot Group Repository Utilization",
         columns=(
+            Column("Group", keys=("snapshotGroupName", "groupRef")),
             Column("Group Ref", keys=("groupRef",)),
+            Column("Sched Owned", keys=("isScheduleOwned",), formatter=_bool_formatter, justify="center"),
+            Column("Sched Count", keys=("scheduleCount",), justify="right"),
             Column(
                 "Used (GiB)",
                 keys=("pitGroupBytesUsed",),
@@ -403,5 +465,37 @@ CLI_TABLE_VIEWS: dict[str, TableView] = {
             ),
         ),
         sort_key=lambda row: str(row.get("hostLabel") or row.get("label") or "").lower(),
+    ),
+    "reports.interfaces": TableView(
+        title="Host-side Interfaces",
+        columns=(
+            Column("Ctrl", keys=("controller_label", "controller_id", "controller_ref")),
+            Column("Protocol", keys=("protocol",)),
+            Column("Interface", keys=("interface_id",), formatter=_truncate_formatter(max_chars=18)),
+            Column("Channel", keys=("channel",), justify="right"),
+            Column("Transport", keys=("transport",)),
+            Column("Addr", keys=("ipv4_address", "infiniband_ipv4_address", "roce_v2_ipv4_address")),
+            Column("Cmd IPv4", keys=("command_ipv4_address",)),
+            Column("Ready", keys=("is_command_ipv4_ready",), formatter=_bool_formatter, justify="center"),
+            Column("Provider", keys=("command_provider",), formatter=_truncate_formatter(max_chars=18)),
+        ),
+        sort_key=lambda row: (
+            str(row.get("controller_label") or row.get("controller_id") or row.get("controller_ref") or "").lower(),
+            str(row.get("protocol") or "").lower(),
+            str(row.get("channel") or ""),
+            str(row.get("interface_id") or "").lower(),
+        ),
+    ),
+    "reports.controllers": TableView(
+        title="Controllers",
+        columns=(
+            Column("Ctrl", keys=("physical_location_label", "id", "controller_ref")),
+            Column("Model", keys=("model_name",), formatter=_truncate_formatter(max_chars=18)),
+            Column("Status", keys=("status",)),
+            Column("Ifaces", keys=("hostside_interface_count",), justify="right"),
+            Column("Cmd Ready", extractor=_hostside_ready_summary, justify="center"),
+            Column("Protocols", extractor=_hostside_protocol_summary, formatter=_truncate_formatter(max_chars=22)),
+        ),
+        sort_key=lambda row: str(row.get("physical_location_label") or row.get("id") or row.get("controller_ref") or "").lower(),
     ),
 }

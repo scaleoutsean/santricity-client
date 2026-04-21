@@ -327,6 +327,65 @@ santricity system version \
 
 The command returns a JSON summary that includes the bundle display string (`11.90R2` in the sample output), management firmware build, and symbol API identifiers so you can feed the detected release back into automation without guessing.
 
+### Report Examples
+
+Use pre-filtered reports when you want stable, snake-cased output for external systems (Grafana, Prometheus exporters, CSI sidecars, and similar tooling).
+
+List host-side interface report rows:
+
+```bash
+santricity reports interfaces \
+    --base-url https://array/devmgr/v2 \
+    --system-id 600A098000F63714000000005E79C17C \
+    --username admin \
+    --password secret \
+    --json
+```
+
+Filter interface report rows by controller and transport/protocol:
+
+```bash
+santricity reports interfaces \
+    --base-url https://array/devmgr/v2 \
+    --system-id 600A098000F63714000000005E79C17C \
+    --username admin \
+    --password secret \
+    --controller a \
+    --protocol ethernet \
+    --json
+```
+
+List controllers with embedded host-side interface details:
+
+```bash
+santricity reports controllers \
+    --base-url https://array/devmgr/v2 \
+    --system-id 600A098000F63714000000005E79C17C \
+    --username admin \
+    --password secret \
+    --protocol fibre \
+    --json
+```
+
+List controllers only (without embedded interface payloads):
+
+```bash
+santricity reports controllers \
+    --base-url https://array/devmgr/v2 \
+    --system-id 600A098000F63714000000005E79C17C \
+    --username admin \
+    --password secret \
+    --no-hostside-interfaces \
+    --json
+```
+
+Programmatic usage is available through the same report facade:
+
+```python
+interface_rows = client.reports.interfaces(controller="all", protocol="iscsi")
+controller_rows = client.reports.controllers(protocol="all", include_hostside_interfaces=True)
+```
+
 ## Releasing
 
 Note: this package *may* be published to PyPI, but that is unlikely because I think there isn't enough interest in this library to justify the burden of maintaining a PyPI package.
