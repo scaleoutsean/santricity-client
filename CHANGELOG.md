@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented here.
 
-## 0.2.2
+## 0.2.2 and 0.2.3
 
 - Rename "Ready" column to "NVMe Ready" in interfaces report
 - Fix one of the tests

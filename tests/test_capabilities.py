@@ -10,7 +10,7 @@ def test_default_profile_uses_latest_release():
 def test_future_release_sets_flag():
     profile = resolve_capabilities("99.0")
     assert profile.is_future_release is True
-    assert profile.legacy_mapping_endpoint == "/volume-mappings"
+    assert profile.mapping_endpoint == "/volume-mappings"
 
 
 def test_legacy_release_disables_jwt():
