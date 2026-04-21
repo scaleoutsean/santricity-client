@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented here.
 
+## 0.2.2
+
+- Rename "Ready" column to "NVMe Ready" in interfaces report
+- Fix one of the tests
+
+## 0.2.1
+
+- Add interfaces report and more snapshot-related commands
+
 ## 0.2.0
 
 - Add get_system_hostside_interfaces for interface

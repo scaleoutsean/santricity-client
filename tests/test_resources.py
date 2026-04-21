@@ -30,30 +30,8 @@ def test_create_volume_mapping(requests_mock):
     assert result["id"] == "map1"
 
 
-def test_volume_mapping_fallback_to_legacy_endpoint(requests_mock):
+def test_clone_creation(requests_mock):
     client = build_client(release_version="12.0")
-    requests_mock.post(
-        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/v2/volume-mappings",
-        status_code=404,
-        json={"error": "missing"},
-    )
-    requests_mock.post(
-        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/volume-mappings",
-        json={"id": "legacy"},
-    )
-
-    result = client.mappings.create({"volumeRef": "2", "lun": 1})
-
-    assert result["id"] == "legacy"
-
-
-def test_clone_creation_falls_back(requests_mock):
-    client = build_client(release_version="12.0")
-    requests_mock.post(
-        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/v2/volume-clones",
-        status_code=405,
-        json={"error": "deprecated"},
-    )
     requests_mock.post(
         f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/volume-clones",
         json={"cloneRef": "c1"},
@@ -62,6 +40,18 @@ def test_clone_creation_falls_back(requests_mock):
     result = client.clones.create({"sourceRef": "vol1"})
 
     assert result["cloneRef"] == "c1"
+
+
+def test_volume_mapping_delete(requests_mock):
+    client = build_client(release_version="12.0")
+    requests_mock.delete(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/volume-mappings/map-1",
+        json={"deleted": True},
+    )
+
+    result = client.mappings.delete("map-1")
+
+    assert result["deleted"] is True
 
 
 def test_system_release_summary_prefers_bundle_display(requests_mock):
@@ -90,6 +80,38 @@ def test_system_release_summary_prefers_bundle_display(requests_mock):
     assert summary["version"] == "11.90R2"
     assert summary["source"] == "bundleDisplay"
     assert summary["symbolApi"] == "v1190api9"
+
+
+def test_system_get_info_selects_active_system(requests_mock):
+    client = build_client(base_url="https://array/devmgr/v2", system_id=DEFAULT_SYSTEM_ID)
+    requests_mock.get(
+        "https://array/devmgr/v2/storage-systems",
+        json=[
+            {"wwn": "other-system", "chassisSerialNumber": "111"},
+            {"wwn": DEFAULT_SYSTEM_ID, "chassisSerialNumber": "952419000943"},
+        ],
+    )
+
+    info = client.system.get_info()
+
+    assert info["wwn"] == DEFAULT_SYSTEM_ID
+    assert info["chassisSerialNumber"] == "952419000943"
+
+
+def test_system_get_info_falls_back_to_first_entry(requests_mock):
+    client = build_client(base_url="https://array/devmgr/v2", system_id=DEFAULT_SYSTEM_ID)
+    requests_mock.get(
+        "https://array/devmgr/v2/storage-systems",
+        json=[
+            {"wwn": "unrelated", "chassisSerialNumber": "abc"},
+            {"wwn": "something-else", "chassisSerialNumber": "def"},
+        ],
+    )
+
+    info = client.system.get_info()
+
+    assert info["wwn"] == "unrelated"
+    assert info["chassisSerialNumber"] == "abc"
 
 
 def test_system_release_summary_handles_missing_firmware_endpoint(requests_mock):

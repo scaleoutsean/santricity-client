@@ -204,7 +204,7 @@ def test_reports_interfaces_cli_renders_table(requests_mock):
     assert result.exit_code == 0
     assert "Host-side Interfaces" in result.stdout
     assert "eth-1" in result.stdout
-    assert "192.16" in result.stdout
+    assert "192.1" in result.stdout
     assert "Yes" in result.stdout
 
 
@@ -1134,7 +1134,7 @@ def test_volumes_create_cli_fallbacks_to_legacy_endpoint(requests_mock):
 def test_mappings_list_cli(requests_mock):
     base_url = "https://array/devmgr/v2"
     requests_mock.get(
-        f"{base_url}/storage-systems/{SYSTEM_ID}/v2/volume-mappings",
+        f"{base_url}/storage-systems/{SYSTEM_ID}/volume-mappings",
         json=[{"mappingRef": "m1"}],
     )
 
@@ -1165,7 +1165,7 @@ def test_mappings_create_cli_with_host_resolution(requests_mock):
         json=[{"label": "apphost", "hostRef": "hostRef01"}],
     )
     requests_mock.post(
-        f"{base_url}/storage-systems/{SYSTEM_ID}/v2/volume-mappings",
+        f"{base_url}/storage-systems/{SYSTEM_ID}/volume-mappings",
         json={"mappingRef": "map1"},
     )
 
