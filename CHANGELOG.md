@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.2.6
+
+- Populate non-missing, but incorrectly returned as null, value of controllerRef in interfaces report
+
 ## 0.2.5
 
 - Populate empty controllerRef with known for interfaces report

@@ -406,9 +406,9 @@ def _apply_controller_details(
         controller = controller_by_key.get(candidate)
         if not controller:
             continue
-        row.setdefault("controller_id", controller.get("controller_id"))
-        row.setdefault("controller_ref", controller.get("controller_ref"))
-        row.setdefault("controller_label", controller.get("controller_label"))
+        for key in ("controller_id", "controller_ref", "controller_label"):
+            if not row.get(key) and controller.get(key):
+                row[key] = controller.get(key)
         return
 
 
