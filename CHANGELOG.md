@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.2.5
+
+- Populate empty controllerRef with known for interfaces report
+
 ## 0.2.4
 
 - Change text to bool output for Ethernet in interfaces report

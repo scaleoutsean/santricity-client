@@ -510,6 +510,12 @@ def hostside_interfaces_report(
 
         row = _extract_fields(entry, COMMON_FIELDS)
         row.update(_extract_fields(payload, field_mappings))
+
+        if not row.get("controller_ref"):
+            fallback_ref = _strip_string(payload.get("controllerRef"))
+            if fallback_ref:
+                row["controller_ref"] = fallback_ref
+
         _apply_command_protocol_details(row, entry)
         row["protocol"] = resolved_protocol
         _apply_controller_details(row, controller_by_key)
