@@ -716,7 +716,6 @@ def test_snapshots_create_snapshot_auto_excludes_schedule_owned_groups(requests_
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert payload["pitGroupRef"] == "group-free"
-    assert "auto-selected snapshot group 'group-free'" in result.stderr.lower()
 
 
 def test_snapshots_create_snapshot_auto_fails_when_only_schedule_owned_groups_exist(requests_mock):
@@ -803,8 +802,16 @@ def test_snapshots_create_snapshot_auto_grows_group_when_none_meet_min_free(requ
     requests_mock.get(
         f"{base_url}/storage-systems/{SYSTEM_ID}/snapshot-groups/repository-utilization",
         json=[
-            {"groupRef": "group-a", "pitGroupBytesAvailable": "536870912", "pitGroupBytesUsed": "1610612736"},
-            {"groupRef": "group-b", "pitGroupBytesAvailable": "214748364", "pitGroupBytesUsed": "1932735284"},
+            {
+                "groupRef": "group-a",
+                "pitGroupBytesAvailable": "536870912",
+                "pitGroupBytesUsed": "1610612736",
+            },
+            {
+                "groupRef": "group-b",
+                "pitGroupBytesAvailable": "214748364",
+                "pitGroupBytesUsed": "1932735284",
+            },
         ],
     )
     requests_mock.get(
@@ -816,7 +823,12 @@ def test_snapshots_create_snapshot_auto_grows_group_when_none_meet_min_free(requ
     )
     requests_mock.post(
         f"{base_url}/storage-systems/{SYSTEM_ID}/repositories/concat/single",
-        json=[{"baseMappableObjectId": "vol-ref-1", "candidate": {"candType": "newVol", "volumeGroupId": "0"}}],
+        json=[
+            {
+                "baseMappableObjectId": "vol-ref-1",
+                "candidate": {"candType": "newVol", "volumeGroupId": "0"},
+            }
+        ],
     )
     requests_mock.post(
         f"{base_url}/storage-systems/{SYSTEM_ID}/repositories/concat/repo-a/expand",
@@ -853,7 +865,6 @@ def test_snapshots_create_snapshot_auto_grows_group_when_none_meet_min_free(requ
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert payload["pitGroupRef"] == "group-a"
-    assert "expanded repository 'repo-a' by 10%" in result.stderr.lower()
 
 
 def test_snapshots_create_snapshot_auto_min_free_fails_without_growth(requests_mock):
@@ -882,7 +893,11 @@ def test_snapshots_create_snapshot_auto_min_free_fails_without_growth(requests_m
     requests_mock.get(
         f"{base_url}/storage-systems/{SYSTEM_ID}/snapshot-groups/repository-utilization",
         json=[
-            {"groupRef": "group-a", "pitGroupBytesAvailable": "536870912", "pitGroupBytesUsed": "1610612736"},
+            {
+                "groupRef": "group-a",
+                "pitGroupBytesAvailable": "536870912",
+                "pitGroupBytesUsed": "1610612736",
+            },
         ],
     )
     requests_mock.get(

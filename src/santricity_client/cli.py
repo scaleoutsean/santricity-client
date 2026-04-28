@@ -691,150 +691,6 @@ def _snapshot_list_command(
     _present_output(items, view_id=view_id, json_output=output_json)
 
 
-def _snapshot_schedule_counts(schedules: Sequence[Mapping[str, Any]]) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for schedule in schedules:
-        target = schedule.get("targetObject")
-        if not target:
-            continue
-        key = str(target)
-        counts[key] = counts.get(key, 0) + 1
-    return counts
-
-
-def _list_schedules_best_effort(client: SANtricityClient) -> list[dict[str, Any]]:
-    try:
-        return client.snapshots.list_schedules()
-    except RequestError as exc:
-        if exc.status_code in {404, 405}:
-            return []
-        raise
-
-
-def _coerce_int_default(value: Any, default: int = 0) -> int:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _coerce_float_default(value: Any, default: float = 0.0) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _pick_group_field_int(group: Mapping[str, Any], *keys: str) -> int:
-    for key in keys:
-        if key in group:
-            value = _coerce_int_default(group.get(key), 0)
-            if value != 0:
-                return abs(value)
-    return 0
-
-
-def _choose_snapshot_group_for_auto(
-    groups: Sequence[Mapping[str, Any]],
-    schedules: Sequence[Mapping[str, Any]],
-    utilization: Sequence[Mapping[str, Any]],
-    repositories: Sequence[Mapping[str, Any]],
-    *,
-    volume_ref: str,
-    include_schedule_owned_groups: bool,
-    min_free_percent: float,
-    max_repo_group_capacity_percent: float,
-    max_repo_volumes_per_group: int,
-) -> tuple[str | None, dict[str, Any] | None]:
-    schedule_counts = _snapshot_schedule_counts(schedules)
-    util_by_group_ref: dict[str, Mapping[str, Any]] = {
-        str(item.get("groupRef") or ""): item for item in utilization if item.get("groupRef")
-    }
-    repo_by_ref: dict[str, Mapping[str, Any]] = {
-        str(item.get("id") or item.get("repositoryRef") or item.get("concatRef") or ""): item
-        for item in repositories
-        if item.get("id") or item.get("repositoryRef") or item.get("concatRef")
-    }
-
-    eligible: list[tuple[int, int, str]] = []
-    grow_candidates: list[tuple[int, int, int, str, dict[str, Any]]] = []
-
-    for group in groups:
-        group_ref = str(group.get("pitGroupRef") or group.get("id") or "")
-        if not group_ref:
-            continue
-        if str(group.get("baseVolume") or "") != volume_ref:
-            continue
-
-        schedule_count = schedule_counts.get(group_ref, 0)
-        if schedule_count > 0 and not include_schedule_owned_groups:
-            continue
-
-        util = util_by_group_ref.get(group_ref, {})
-        available = _coerce_int_default(util.get("pitGroupBytesAvailable"), 0)
-        used = _coerce_int_default(util.get("pitGroupBytesUsed"), 0)
-
-        base_bytes = _pick_group_field_int(group, "maxBaseCapacity", "baseVolumeCapacity")
-        if base_bytes <= 0:
-            base_bytes = available + used
-
-        min_free_bytes = int(base_bytes * (min_free_percent / 100.0)) if base_bytes > 0 else 0
-        repo_capacity_bytes = _pick_group_field_int(group, "repositoryCapacity")
-        if repo_capacity_bytes <= 0:
-            repo_capacity_bytes = available + used
-
-        current_repo_percent = (repo_capacity_bytes / base_bytes * 100.0) if base_bytes > 0 else 0.0
-
-        snapshot_count = _coerce_int_default(group.get("snapshotCount"), 0)
-        if available >= min_free_bytes:
-            eligible.append((available, -snapshot_count, group_ref))
-            continue
-
-        if current_repo_percent >= max_repo_group_capacity_percent:
-            continue
-
-        repository_ref = str(group.get("repositoryVolume") or "")
-        repository = repo_by_ref.get(repository_ref, {}) if repository_ref else {}
-        member_count = _pick_group_field_int(
-            repository,
-            "memberCount",
-            "totalRepositoryVolumes",
-            "repositoryVolumeCount",
-            "volumeCount",
-        )
-        if member_count <= 0 and isinstance(repository.get("members"), list):
-            member_count = len(repository["members"])
-        if member_count >= max_repo_volumes_per_group:
-            continue
-
-        grow_candidates.append(
-            (
-                available,
-                -snapshot_count,
-                -member_count,
-                group_ref,
-                {
-                    "groupRef": group_ref,
-                    "repositoryRef": repository_ref,
-                    "baseVolumeRef": str(group.get("baseVolume") or ""),
-                    "availableBytes": available,
-                    "minFreeBytes": min_free_bytes,
-                    "memberCount": member_count,
-                },
-            )
-        )
-
-    if eligible:
-        eligible.sort(reverse=True)
-        return eligible[0][2], None
-
-    if grow_candidates:
-        grow_candidates.sort(reverse=True)
-        return None, grow_candidates[0][4]
-
-    return None, None
-
-
 def _is_snapshot_repo_volume(volume: Mapping[str, Any]) -> bool:
     volume_use = str(volume.get("volumeUse") or "").strip().lower()
     if volume_use in {"concatvolume", "freerepositoryvolume"}:
@@ -1589,134 +1445,35 @@ def snapshots_create_snapshot(
         release_version=release_version,
         system_id=system_id,
     ) as client:
-        resolved_group_ref = group_ref
         volume_ref: str | None = None
-        groups: list[dict[str, Any]] | None = None
-
         if volume:
             volume_ref, _ = _resolve_volume_ref(client, volume)
 
-        if auto:
-            if resolved_group_ref:
-                typer.secho(
-                    "--group-ref was provided; skipping auto-selection.",
-                    err=True,
-                    fg=typer.colors.YELLOW,
-                )
-            else:
-                try:
-                    groups = client.snapshots.list_groups()
-                    schedules = _list_schedules_best_effort(client)
-                    utilization = client.snapshots.list_group_repo_utilization()
-                    repositories = client.snapshots.list_repositories()
-                except RequestError as exc:
-                    _handle_request_error(exc)
-                    return
-
-                resolved_group_ref, grow_target = _choose_snapshot_group_for_auto(
-                    groups,
-                    schedules,
-                    utilization,
-                    repositories,
-                    volume_ref=volume_ref or "",
-                    include_schedule_owned_groups=include_schedule_owned_groups,
-                    min_free_percent=min_free_percent,
-                    max_repo_group_capacity_percent=max_repo_group_capacity_percent,
-                    max_repo_volumes_per_group=max_repo_volumes_per_group,
-                )
-
-                if not resolved_group_ref and grow_target and auto_grow_if_needed:
-                    try:
-                        candidates = client.snapshots.get_repo_group_candidates_single(
-                            base_volume_ref=str(grow_target.get("baseVolumeRef") or ""),
-                            percent_capacity=growth_step_percent,
-                            use_free_repository_volumes=False,
-                        )
-                    except RequestError as exc:
-                        _handle_request_error(exc)
-                        return
-
-                    candidate = (
-                        candidates[0].get("candidate")
-                        if isinstance(candidates, list) and candidates
-                        else None
-                    )
-                    repository_ref = str(grow_target.get("repositoryRef") or "")
-                    if candidate and repository_ref:
-                        try:
-                            client.snapshots.expand_repository(
-                                repository_ref=repository_ref,
-                                expansion_candidate=candidate,
-                            )
-                        except RequestError as exc:
-                            _handle_request_error(exc)
-                            return
-                        resolved_group_ref = str(grow_target.get("groupRef") or "")
-                        typer.secho(
-                            f"Expanded repository '{repository_ref}' by {growth_step_percent}% and selected snapshot group '{resolved_group_ref}'.",
-                            err=True,
-                            fg=typer.colors.GREEN,
-                        )
-
-                if not resolved_group_ref:
-                    typer.secho(
-                        "No eligible snapshot group found for --volume under current policy. "
-                        "Create a snapshot group first, lower --min-free-percent, or rerun with "
-                        "--include-schedule-owned-groups.",
-                        err=True,
-                        fg=typer.colors.RED,
-                    )
-                    raise typer.Exit(code=1)
-
-                if not grow_target:
-                    typer.secho(
-                        f"Auto-selected snapshot group '{resolved_group_ref}'.",
-                        err=True,
-                        fg=typer.colors.GREEN,
-                    )
-
-        if not resolved_group_ref:
-            typer.secho(
-                "A snapshot group reference could not be resolved.",
-                err=True,
-                fg=typer.colors.RED,
-            )
-            raise typer.Exit(code=1)
-
-        if volume:
-            if groups is None:
-                try:
-                    groups = client.snapshots.list_groups()
-                except RequestError as exc:
-                    _handle_request_error(exc)
-                    return
-            selected_group = next(
-                (
-                    g
-                    for g in groups
-                    if str(g.get("pitGroupRef") or g.get("id") or "") == resolved_group_ref
-                ),
-                None,
-            )
-            if selected_group is None:
-                typer.secho(
-                    f"Snapshot group '{resolved_group_ref}' was not found.",
-                    err=True,
-                    fg=typer.colors.RED,
-                )
-                raise typer.Exit(code=1)
-            if str(selected_group.get("baseVolume") or "") != volume_ref:
-                typer.secho(
-                    "The provided --group-ref does not belong to the provided --volume.",
-                    err=True,
-                    fg=typer.colors.RED,
-                )
-                raise typer.Exit(code=1)
         try:
-            snapshot = client.snapshots.create_snapshot(resolved_group_ref)
+            from .automation.snapshots import SnapshotsAutomation
+
+            auto_api = SnapshotsAutomation(client)
+            snapshot = auto_api.auto_create_snapshot(
+                group_ref=group_ref,
+                volume_ref=volume_ref,
+                auto=auto,
+                include_schedule_owned_groups=include_schedule_owned_groups,
+                min_free_percent=min_free_percent,
+                auto_grow_if_needed=auto_grow_if_needed,
+                growth_step_percent=growth_step_percent,
+                max_repo_group_capacity_percent=max_repo_group_capacity_percent,
+                max_repo_volumes_per_group=max_repo_volumes_per_group,
+            )
+        except RuntimeError as exc:
+            typer.secho(str(exc), err=True, fg=typer.colors.RED)
+            raise typer.Exit(code=1)
         except RequestError as exc:
             _handle_request_error(exc)
-            return
+            raise typer.Exit(code=1)
+        except ValueError as exc:
+            typer.secho(str(exc), err=True, fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+
     _echo_json(snapshot)
 
 
@@ -2361,3 +2118,17 @@ def mappings_delete(
             return
 
     typer.secho(f"Mapping '{map_ref}' deleted.", fg=typer.colors.GREEN)
+
+def _list_schedules_best_effort(client):
+    try:
+        return client.snapshots.list_schedules()
+    except Exception as exc:
+        return []
+
+def _snapshot_schedule_counts(schedules):
+    counts = {}
+    for schedule in schedules:
+        target = schedule.get("targetObject")
+        if target:
+            counts[str(target)] = counts.get(str(target), 0) + 1
+    return counts

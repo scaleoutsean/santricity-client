@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.2.7 
+
+- Expose automation snapshot as public SDK method for auto_create_snapshot
+
 ## 0.2.6
 
 - Populate non-missing, but incorrectly returned as null, value of controllerRef in interfaces report
