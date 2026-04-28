@@ -34,7 +34,9 @@ app = typer.Typer(help="SANtricity storage management CLI.", no_args_is_help=Tru
 
 hosts_app = typer.Typer(help="Host operations.", **_HELP_SETTINGS)
 pools_app = typer.Typer(help="Pool operations.", **_HELP_SETTINGS)
-snapshots_app = typer.Typer(help="Snapshot group, image, volume, and schedule operations.", **_HELP_SETTINGS)
+snapshots_app = typer.Typer(
+    help="Snapshot group, image, volume, and schedule operations.", **_HELP_SETTINGS
+)
 volumes_app = typer.Typer(help="Volume operations.", **_HELP_SETTINGS)
 mappings_app = typer.Typer(help="Volume mapping operations.", **_HELP_SETTINGS)
 system_app = typer.Typer(help="System metadata operations.", **_HELP_SETTINGS)
@@ -746,9 +748,7 @@ def _choose_snapshot_group_for_auto(
 ) -> tuple[str | None, dict[str, Any] | None]:
     schedule_counts = _snapshot_schedule_counts(schedules)
     util_by_group_ref: dict[str, Mapping[str, Any]] = {
-        str(item.get("groupRef") or ""): item
-        for item in utilization
-        if item.get("groupRef")
+        str(item.get("groupRef") or ""): item for item in utilization if item.get("groupRef")
     }
     repo_by_ref: dict[str, Mapping[str, Any]] = {
         str(item.get("id") or item.get("repositoryRef") or item.get("concatRef") or ""): item
@@ -855,20 +855,14 @@ def _resolve_volume_ref(client: SANtricityClient, volume: str) -> tuple[str, str
         _handle_request_error(exc)
         raise typer.Exit(code=1)
 
-    by_ref = [
-        v
-        for v in volumes
-        if str(v.get("volumeRef") or v.get("id") or "") == volume
-    ]
+    by_ref = [v for v in volumes if str(v.get("volumeRef") or v.get("id") or "") == volume]
     if by_ref:
         v = by_ref[0]
-        return str(v.get("volumeRef") or v.get("id")), str(v.get("label") or v.get("name") or volume)
+        return str(v.get("volumeRef") or v.get("id")), str(
+            v.get("label") or v.get("name") or volume
+        )
 
-    by_label = [
-        v
-        for v in volumes
-        if str(v.get("label") or v.get("name") or "") == volume
-    ]
+    by_label = [v for v in volumes if str(v.get("label") or v.get("name") or "") == volume]
     if not by_label:
         typer.secho(
             f"No volume matching '{volume}' was found.",
@@ -1026,7 +1020,21 @@ def snapshots_list_volumes(
     output_json: bool = _SHARED_OPTIONS["output_json"],
 ) -> None:
     """List snapshot volumes (linked clones and read-only views)."""
-    _snapshot_list_command("list_volumes", "snapshots.list-volumes", base_url, auth, username, password, token, verify_ssl, cert_path, timeout, release_version, system_id, output_json)
+    _snapshot_list_command(
+        "list_volumes",
+        "snapshots.list-volumes",
+        base_url,
+        auth,
+        username,
+        password,
+        token,
+        verify_ssl,
+        cert_path,
+        timeout,
+        release_version,
+        system_id,
+        output_json,
+    )
 
 
 @snapshots_app.command("list-repo-groups")
@@ -1044,7 +1052,21 @@ def snapshots_list_repos(
     output_json: bool = _SHARED_OPTIONS["output_json"],
 ) -> None:
     """List concatenated repository volumes backing snapshot groups and linked clones."""
-    _snapshot_list_command("list_repositories", "snapshots.list-repo-groups", base_url, auth, username, password, token, verify_ssl, cert_path, timeout, release_version, system_id, output_json)
+    _snapshot_list_command(
+        "list_repositories",
+        "snapshots.list-repo-groups",
+        base_url,
+        auth,
+        username,
+        password,
+        token,
+        verify_ssl,
+        cert_path,
+        timeout,
+        release_version,
+        system_id,
+        output_json,
+    )
 
 
 @snapshots_app.command("list-repo-volumes")
@@ -1080,7 +1102,11 @@ def snapshots_list_repo_volumes(
             _handle_request_error(exc)
             return
 
-    repo_volumes = [volume for volume in volumes if isinstance(volume, Mapping) and _is_snapshot_repo_volume(volume)]
+    repo_volumes = [
+        volume
+        for volume in volumes
+        if isinstance(volume, Mapping) and _is_snapshot_repo_volume(volume)
+    ]
     _present_output(repo_volumes, view_id="snapshots.list-repo-volumes", json_output=output_json)
 
 
@@ -1120,7 +1146,9 @@ def snapshots_list_group_util(
             return
 
     group_name_by_ref: dict[str, str] = {
-        str(g.get("pitGroupRef") or g.get("id") or ""): (g.get("name") or g.get("label") or str(g.get("pitGroupRef") or g.get("id") or ""))
+        str(g.get("pitGroupRef") or g.get("id") or ""): (
+            g.get("name") or g.get("label") or str(g.get("pitGroupRef") or g.get("id") or "")
+        )
         for g in groups
         if g.get("pitGroupRef") or g.get("id")
     }
@@ -1150,7 +1178,21 @@ def snapshots_list_volume_util(
     output_json: bool = _SHARED_OPTIONS["output_json"],
 ) -> None:
     """List repository utilization for snapshot volumes (linked clones)."""
-    _snapshot_list_command("list_volume_repo_utilization", "snapshots.list-volume-util", base_url, auth, username, password, token, verify_ssl, cert_path, timeout, release_version, system_id, output_json)
+    _snapshot_list_command(
+        "list_volume_repo_utilization",
+        "snapshots.list-volume-util",
+        base_url,
+        auth,
+        username,
+        password,
+        token,
+        verify_ssl,
+        cert_path,
+        timeout,
+        release_version,
+        system_id,
+        output_json,
+    )
 
 
 @snapshots_app.command("list-cg-members")
@@ -1168,7 +1210,21 @@ def snapshots_list_cg_members(
     output_json: bool = _SHARED_OPTIONS["output_json"],
 ) -> None:
     """List volumes that are members of consistency groups."""
-    _snapshot_list_command("list_consistency_group_members", "snapshots.list-cg-members", base_url, auth, username, password, token, verify_ssl, cert_path, timeout, release_version, system_id, output_json)
+    _snapshot_list_command(
+        "list_consistency_group_members",
+        "snapshots.list-cg-members",
+        base_url,
+        auth,
+        username,
+        password,
+        token,
+        verify_ssl,
+        cert_path,
+        timeout,
+        release_version,
+        system_id,
+        output_json,
+    )
 
 
 @snapshots_app.command("list-schedules")
@@ -1253,7 +1309,9 @@ def snapshots_create_image(
 @snapshots_app.command("create-repo-group")
 def snapshots_create_repo_group(
     volume: str = typer.Option(..., "--volume", help="Base volume label/name or volumeRef."),
-    percent_capacity: int = typer.Option(..., "--percent-capacity", min=1, max=100, help="Repository capacity as % of base volume."),
+    percent_capacity: int = typer.Option(
+        ..., "--percent-capacity", min=1, max=100, help="Repository capacity as % of base volume."
+    ),
     use_free_repository_volumes: bool = typer.Option(
         False,
         "--use-free-repository-volumes/--no-use-free-repository-volumes",
@@ -1297,7 +1355,9 @@ def snapshots_create_repo_group(
 @snapshots_app.command("plan-repo-group")
 def snapshots_plan_repo_group(
     volume: str = typer.Option(..., "--volume", help="Base volume label/name or volumeRef."),
-    percent_capacity: int = typer.Option(..., "--percent-capacity", min=1, max=100, help="Repository capacity as % of base volume."),
+    percent_capacity: int = typer.Option(
+        ..., "--percent-capacity", min=1, max=100, help="Repository capacity as % of base volume."
+    ),
     use_free_repository_volumes: bool = typer.Option(
         False,
         "--use-free-repository-volumes/--no-use-free-repository-volumes",
@@ -1344,11 +1404,24 @@ def snapshots_plan_repo_group(
 @snapshots_app.command("create-snapshot-group")
 def snapshots_create_snapshot_group(
     volume: str = typer.Option(..., "--volume", help="Base volume label/name or volumeRef."),
-    percent_capacity: int = typer.Option(..., "--percent-capacity", min=1, max=100, help="Repository capacity as % of base volume."),
-    name: str | None = typer.Option(None, "--name", help="Snapshot group name. Defaults to <volume_label>_SG_01."),
-    warning_threshold: int = typer.Option(75, "--warning-threshold", min=1, max=100, help="Repository full warning threshold percent."),
-    auto_delete_limit: int = typer.Option(32, "--auto-delete-limit", min=0, help="Auto-delete limit when full policy purges snapshots."),
-    full_policy: str = typer.Option("purgepit", "--full-policy", help="Repository full policy (for example: purgepit)."),
+    percent_capacity: int = typer.Option(
+        ..., "--percent-capacity", min=1, max=100, help="Repository capacity as % of base volume."
+    ),
+    name: str | None = typer.Option(
+        None, "--name", help="Snapshot group name. Defaults to <volume_label>_SG_01."
+    ),
+    warning_threshold: int = typer.Option(
+        75, "--warning-threshold", min=1, max=100, help="Repository full warning threshold percent."
+    ),
+    auto_delete_limit: int = typer.Option(
+        32,
+        "--auto-delete-limit",
+        min=0,
+        help="Auto-delete limit when full policy purges snapshots.",
+    ),
+    full_policy: str = typer.Option(
+        "purgepit", "--full-policy", help="Repository full policy (for example: purgepit)."
+    ),
     use_free_repository_volumes: bool = typer.Option(
         False,
         "--use-free-repository-volumes/--no-use-free-repository-volumes",
@@ -1417,7 +1490,9 @@ def snapshots_create_snapshot_group(
 
 @snapshots_app.command("create-snapshot")
 def snapshots_create_snapshot(
-    group_ref: str | None = typer.Option(None, "--group-ref", help="Snapshot group ref (pitGroupRef)."),
+    group_ref: str | None = typer.Option(
+        None, "--group-ref", help="Snapshot group ref (pitGroupRef)."
+    ),
     auto: bool = typer.Option(
         False,
         "--auto",
@@ -1468,7 +1543,9 @@ def snapshots_create_snapshot(
         help="Do not auto-grow groups with this many repository members already attached.",
         show_default=True,
     ),
-    volume: str | None = typer.Option(None, "--volume", help="Optional base volume label/name/ref to validate group ownership."),
+    volume: str | None = typer.Option(
+        None, "--volume", help="Optional base volume label/name/ref to validate group ownership."
+    ),
     base_url: str = _SHARED_OPTIONS["base_url"],
     username: str | None = _SHARED_OPTIONS["username"],
     password: str | None = _SHARED_OPTIONS["password"],
@@ -1559,7 +1636,11 @@ def snapshots_create_snapshot(
                         _handle_request_error(exc)
                         return
 
-                    candidate = candidates[0].get("candidate") if isinstance(candidates, list) and candidates else None
+                    candidate = (
+                        candidates[0].get("candidate")
+                        if isinstance(candidates, list) and candidates
+                        else None
+                    )
                     repository_ref = str(grow_target.get("repositoryRef") or "")
                     if candidate and repository_ref:
                         try:
@@ -1637,6 +1718,71 @@ def snapshots_create_snapshot(
             _handle_request_error(exc)
             return
     _echo_json(snapshot)
+
+
+@snapshots_app.command("create-clone")
+def snapshots_create_clone(
+    snapshot_id: str = typer.Option(
+        ...,
+        "--snapshot-id",
+        help="Identifier of the source snapshot image (pitRef / snapshotImageId).",
+    ),
+    name: str = typer.Option(..., "--name", help="Name of the new snapshot volume (Linked Clone)."),
+    clone_type: str = typer.Option("ro", "--type", help="Clone type ('ro' is read-only)."),
+    extras: str | None = typer.Option(
+        None, "--extras", help="Comma-separated optional payload fields (e.g. k=v,flag=true)."
+    ),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Create a new Snapshot Volume (Linked Clone)."""
+    if clone_type.lower() != "ro":
+        typer.secho(
+            "Error: '--type rw' (Read-Write linked clones) requires repository automation that is not yet implemented. Use '--type ro' for now.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    payload: dict[str, Any] = {
+        "name": name,
+        "snapshotImageId": snapshot_id,
+        "viewMode": "readOnly",
+    }
+    if extras:
+        try:
+            payload.update(parse_extras(extras))
+        except Exception:
+            raise typer.BadParameter(
+                "Invalid format for --extras; expected k=v pairs separated by commas."
+            ) from None
+
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            clone = client.snapshots.create_snapshot_volume(payload)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+        _echo_json(clone)
 
 
 @snapshots_app.command("delete-image")

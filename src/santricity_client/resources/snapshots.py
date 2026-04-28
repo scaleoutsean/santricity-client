@@ -68,6 +68,10 @@ class SnapshotsResource(ResourceBase):
         """List snapshot volumes (linked clones and read-only views)."""
         return self._get("/snapshot-volumes")
 
+    def create_snapshot_volume(self, payload: Mapping[str, Any]) -> dict[str, Any]:
+        """Create a new snapshot volume (pitView - read-only or read/write)."""
+        return self._post("/snapshot-volumes", payload)
+
     def list_repositories(self) -> list[dict[str, Any]]:
         """List concatenated repository volumes backing snapshot groups and linked clones."""
         return self._get("/repositories/concat")
