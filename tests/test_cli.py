@@ -744,6 +744,10 @@ def test_snapshots_create_snapshot_auto_fails_when_only_schedule_owned_groups_ex
         f"{base_url}/storage-systems/{SYSTEM_ID}/repositories/concat",
         json=[],
     )
+    requests_mock.post(
+        f"{base_url}/storage-systems/{SYSTEM_ID}/repositories/concat/single",
+        json=[],
+    )
 
     result = runner.invoke(
         app,
@@ -765,7 +769,7 @@ def test_snapshots_create_snapshot_auto_fails_when_only_schedule_owned_groups_ex
     )
 
     assert result.exit_code == 1
-    assert "no eligible snapshot group found" in result.stderr.lower()
+    assert "no repository candidates found" in str(result.exception).lower()
 
 
 def test_snapshots_create_snapshot_auto_grows_group_when_none_meet_min_free(requests_mock):
@@ -906,6 +910,10 @@ def test_snapshots_create_snapshot_auto_min_free_fails_without_growth(requests_m
             {"id": "repo-a", "memberCount": 2},
         ],
     )
+    requests_mock.post(
+        f"{base_url}/storage-systems/{SYSTEM_ID}/repositories/concat/single",
+        json=[],
+    )
 
     result = runner.invoke(
         app,
@@ -930,7 +938,7 @@ def test_snapshots_create_snapshot_auto_min_free_fails_without_growth(requests_m
     )
 
     assert result.exit_code == 1
-    assert "no eligible snapshot group found" in result.stderr.lower()
+    assert "no repository candidates found" in str(result.exception).lower()
 
 
 def test_volumes_create_cli(requests_mock):

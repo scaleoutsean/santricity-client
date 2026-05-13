@@ -41,6 +41,7 @@ volumes_app = typer.Typer(help="Volume operations.", **_HELP_SETTINGS)
 mappings_app = typer.Typer(help="Volume mapping operations.", **_HELP_SETTINGS)
 system_app = typer.Typer(help="System metadata operations.", **_HELP_SETTINGS)
 reports_app = typer.Typer(help="Pre-filtered report operations.", **_HELP_SETTINGS)
+cgs_app = typer.Typer(help="Consistency Group operations.", **_HELP_SETTINGS)
 app.add_typer(hosts_app, name="hosts")
 app.add_typer(pools_app, name="pools")
 app.add_typer(snapshots_app, name="snapshots")
@@ -48,6 +49,7 @@ app.add_typer(volumes_app, name="volumes")
 app.add_typer(mappings_app, name="mappings")
 app.add_typer(system_app, name="system")
 app.add_typer(reports_app, name="reports")
+app.add_typer(cgs_app, name="consistency-groups")
 
 
 def _build_client(
@@ -1449,18 +1451,20 @@ def snapshots_create_snapshot(
         if volume:
             volume_ref, _ = _resolve_volume_ref(client, volume)
 
+        if not volume_ref:
+            typer.secho("The '--volume' argument is required when using '--auto'.", err=True, fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+
         try:
             from .automation.snapshots import SnapshotsAutomation
 
             auto_api = SnapshotsAutomation(client)
             snapshot = auto_api.auto_create_snapshot(
-                group_ref=group_ref,
                 volume_ref=volume_ref,
-                auto=auto,
-                include_schedule_owned_groups=include_schedule_owned_groups,
                 min_free_percent=min_free_percent,
                 auto_grow_if_needed=auto_grow_if_needed,
                 growth_step_percent=growth_step_percent,
+                include_schedule_owned_groups=include_schedule_owned_groups,
                 max_repo_group_capacity_percent=max_repo_group_capacity_percent,
                 max_repo_volumes_per_group=max_repo_volumes_per_group,
             )
@@ -2132,3 +2136,370 @@ def _snapshot_schedule_counts(schedules):
         if target:
             counts[str(target)] = counts.get(str(target), 0) + 1
     return counts
+
+
+# ==============================================================================
+# Consistency Groups
+# ==============================================================================
+
+@cgs_app.command("list")
+def cgs_list(
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """List all consistency groups."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            cgs = client.consistency_groups.list_groups()
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    _echo_json(cgs)
+
+
+@cgs_app.command("list-members")
+def cgs_list_members(
+    group: str = typer.Option(..., "--group", help="Consistency Group ID or name."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """List member volumes of a consistency group."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            # Simple resolve for name -> cgRef
+            cgs = client.consistency_groups.list_groups()
+            cg_ref = next((c["id"] for c in cgs if c["id"] == group or c["name"] == group), group)
+            members = client.consistency_groups.list_member_volumes(cg_ref)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    _echo_json(members)
+
+
+@cgs_app.command("list-snapshots")
+def cgs_list_snapshots(
+    group: str = typer.Option(..., "--group", help="Consistency Group ID or name."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """List snapshots for a consistency group."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            cgs = client.consistency_groups.list_groups()
+            cg_ref = next((c["id"] for c in cgs if c["id"] == group or c["name"] == group), group)
+            snapshots = client.consistency_groups.list_snapshots(cg_ref)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    _echo_json(snapshots)
+
+
+@cgs_app.command("list-clones")
+def cgs_list_clones(
+    group: str = typer.Option(..., "--group", help="Consistency Group ID or name."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """List read-only Linked Clones (Views) for a consistency group."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            cgs = client.consistency_groups.list_groups()
+            cg_ref = next((c["id"] for c in cgs if c["id"] == group or c["name"] == group), group)
+            views = client.consistency_groups.list_views_for_group(cg_ref)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    _echo_json(views)
+
+
+@cgs_app.command("create")
+def cgs_create(
+    name: str = typer.Option(..., "--name", help="Name of the new Consistency Group."),
+    full_warn_threshold: int = typer.Option(75, "--warning-threshold", help="Full warning threshold percent."),
+    auto_delete_limit: int = typer.Option(32, "--auto-delete-limit", help="Auto delete limit for purge policy."),
+    full_policy: str = typer.Option("purgepit", "--full-policy", help="Repository full policy (e.g., purgepit)."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Create a new consistency group."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            payload = {
+                "name": name,
+                "fullWarnThresholdPercent": full_warn_threshold,
+                "autoDeleteThreshold": auto_delete_limit, # wait, standard API might be 'autoDeleteLimit' or 'autoDeleteThreshold'
+                "repositoryFullPolicy": full_policy,
+            }
+            # Notes used autoDeleteThreshold in POST /consistency-groups
+            cg = client.consistency_groups.create_group(payload)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    _echo_json(cg)
+
+
+@cgs_app.command("create-snapshot")
+def cgs_create_snapshot(
+    group: str = typer.Option(..., "--group", help="Consistency Group ID or name."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Create a new snapshot for a consistency group. Will error if member volumes are empty."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            cgs = client.consistency_groups.list_groups()
+            cg_ref = next((c["id"] for c in cgs if c["id"] == group or c["name"] == group), group)
+            # Use automation safe-wrapper
+            snaps = client.automation.snapshots.create_cg_snapshot(cg_ref)
+        except RuntimeError as err:
+            typer.secho(str(err), err=True, fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    _echo_json(snaps)
+
+
+
+@cgs_app.command("add-member")
+def cgs_add_member(
+    group: str = typer.Option(..., "--group", help="Consistency Group ID or name."),
+    volume: str = typer.Option(..., "--volume", help="Volume ID to add to the CG."),
+    repository_percent: int = typer.Option(20, "--repository-percent", help="Repository size percent for this member."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Add a member volume to a consistency group."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            # Simple resolve for name -> cgRef
+            cgs = client.consistency_groups.list_groups()
+            cg_ref = next((c["id"] for c in cgs if c["id"] == group or c["name"] == group), group)
+            
+            # Since repository Candidate needs to be populated, SANtricity might do it server-side if pool is defined.
+            # But the 'add_member_volume' logic for CSI assumes the repositoryCandidate or poolId.
+            # For now, sending what the API generally validates or throwing error on mismatch.
+            payload = {
+                "volumeId": volume,
+                "repositoryPercent": repository_percent,
+                "scanMedia": False,
+                "validateParity": False,
+            }
+            # Add member natively
+            members = client.consistency_groups.add_member_volume(cg_ref, payload)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    _echo_json(members)
+
+
+@cgs_app.command("delete")
+def cgs_delete(
+    group: str = typer.Option(..., "--group", help="Consistency Group ID or name to delete."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Delete a consistency group."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            cgs = client.consistency_groups.list_groups()
+            cg_ref = next((c["id"] for c in cgs if c["id"] == group or c["name"] == group), group)
+            client.consistency_groups.delete_group(cg_ref)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    typer.secho(f"Successfully deleted Consistency Group: {group}", fg=typer.colors.GREEN)
+
+
+
+@cgs_app.command("remove-member")
+def cgs_remove_member(
+    group: str = typer.Option(..., "--group", help="Consistency Group ID or name."),
+    member: str = typer.Option(..., "--member", help="Member Volume ID to remove from the CG."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Remove a member volume from a consistency group. May fail if dependent clones exist."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            # Simple resolve for name -> cgRef
+            cgs = client.consistency_groups.list_groups()
+            cg_ref = next((c["id"] for c in cgs if c["id"] == group or c["name"] == group), group)
+            
+            client.consistency_groups.remove_member_volume(cg_ref, member)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    typer.secho(f"Successfully removed member {member} from CG.", fg=typer.colors.GREEN)
+

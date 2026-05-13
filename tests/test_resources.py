@@ -137,3 +137,59 @@ def test_system_release_summary_handles_missing_firmware_endpoint(requests_mock)
     assert summary["source"] == "symbolApi"
     assert summary["bundleDisplay"] is None
     assert summary["errors"]
+
+def test_consistency_groups_operations(requests_mock):
+    client = build_client()
+    requests_mock.get(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/consistency-groups",
+        json=[{"id": "cg1"}],
+    )
+    requests_mock.get(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/consistency-groups/cg1",
+        json={"id": "cg1"},
+    )
+    requests_mock.post(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/consistency-groups",
+        json={"id": "cg2"},
+    )
+    requests_mock.delete(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/consistency-groups/cg2",
+        status_code=204,
+    )
+    requests_mock.get(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/consistency-groups/cg1/member-volumes",
+        json=[{"id": "mv1"}],
+    )
+    requests_mock.post(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/consistency-groups/cg1/member-volumes",
+        json={"id": "mv1"},
+    )
+    requests_mock.delete(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/consistency-groups/cg1/member-volumes/mv1",
+        status_code=204,
+    )
+    requests_mock.get(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/consistency-groups/cg1/snapshots",
+        json=[{"id": "snap1"}],
+    )
+    requests_mock.post(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/consistency-groups/cg1/snapshots",
+        json=[{"id": "snap2"}],
+    )
+    requests_mock.delete(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/consistency-groups/cg1/snapshots/123",
+        status_code=204,
+    )
+
+    assert client.consistency_groups.list_groups() == [{"id": "cg1"}]
+    assert client.consistency_groups.get_group("cg1") == {"id": "cg1"}
+    assert client.consistency_groups.create_group({"name": "test"}) == {"id": "cg2"}
+    assert client.consistency_groups.delete_group("cg2") is None
+    
+    assert client.consistency_groups.list_member_volumes("cg1") == [{"id": "mv1"}]
+    assert client.consistency_groups.add_member_volume("cg1", {"volId": "v1"}) == {"id": "mv1"}
+    assert client.consistency_groups.remove_member_volume("cg1", "mv1") is None
+    
+    assert client.consistency_groups.list_snapshots("cg1") == [{"id": "snap1"}]
+    assert client.consistency_groups.create_snapshot("cg1") == [{"id": "snap2"}]
+    assert client.consistency_groups.delete_snapshot("cg1", 123) is None

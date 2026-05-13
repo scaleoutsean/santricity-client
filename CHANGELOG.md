@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.2.8
+
+- Consistency Group snapshots and read-only Linked Clones (client library and CLI)
+
 ## 0.2.7 
 
 - Expose automation snapshot as public SDK method for auto_create_snapshot
