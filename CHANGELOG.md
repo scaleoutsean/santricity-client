@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.2.9
+
+- Add `initial_repo_group_size_pct` support to `auto_create_snapshot` for snapshot group capacity control.
+
 ## 0.2.8
 
 - Consistency Group snapshots and read-only Linked Clones (client library and CLI)
