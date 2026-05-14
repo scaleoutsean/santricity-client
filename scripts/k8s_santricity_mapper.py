@@ -19,7 +19,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def main():
     parser = argparse.ArgumentParser(description="Map Kubernetes PVCs to SANtricity Volumes and find orphans.")
-    parser.add_argument("--url", required=True, help="SANtricity API base URL")
+    parser.add_argument("--base-url", required=True, help="SANtricity API base URL (e.g., https://1.2.3.4:8443/devmgr/v2)")
     parser.add_argument("--user", required=True, help="SANtricity username for basic auth")
     parser.add_argument("--password", required=True, help="SANtricity password for basic auth")
     parser.add_argument("--verify", action="store_true", default=False, help="Verify SSL")
@@ -77,7 +77,7 @@ def main():
     # 2. Extract SANtricity volumes
     print("Querying SANtricity Array Volumes...")
     sc = SANtricityClient(
-        base_url=args.url,
+        base_url=args.base_url,
         auth_strategy=BasicAuth(args.user, args.password),
         verify_ssl=args.verify
     )

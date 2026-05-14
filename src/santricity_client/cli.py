@@ -167,7 +167,7 @@ def _shared_options() -> dict[str, Any]:  # pragma: no cover - helper indirectio
 
     return {
         "base_url": typer.Option(
-            ..., "--base-url", envvar="SANTRICITY_BASE_URL", help="SANtricity API base URL."
+            ..., "--base-url", envvar="SANTRICITY_BASE_URL", help="SANtricity API base URL, e.g. https://1.2.3.4:8443/devmgr/v2."
         ),
         "username": typer.Option(
             None,
