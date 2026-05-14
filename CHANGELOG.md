@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.3.0
+
+- Add delete_snapshot_volume function
+
 ## 0.2.9
 
 - Add `initial_repo_group_size_pct` support to `auto_create_snapshot` for snapshot group capacity control.
