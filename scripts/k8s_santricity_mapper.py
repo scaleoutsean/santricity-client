@@ -101,12 +101,12 @@ def main():
         vol_id = vol.get("id", "")
         vol_wwn = vol.get("volumeWwn", "")
         
-        # Check if the CSI Volume Handle maps to the Array ID, Name, or WWN
+        # Check if the CSI Volume Handle contains the Array ID, Name, or WWN
         match_handle = None
-        for key in [vol_name, vol_id, vol_wwn]:
-            if key in k8s_volumes:
-                match_handle = key
-                break
+        for k8s_handle in k8s_volumes.keys():
+             if (vol_id and vol_id in k8s_handle) or (vol_wwn and vol_wwn in k8s_handle) or (vol_name == k8s_handle):
+                 match_handle = k8s_handle
+                 break
                 
         if match_handle:
             meta = k8s_volumes[match_handle]
@@ -117,7 +117,7 @@ def main():
         else:
             # If a SANtricity volume starts with a likely CSI prefix but isn't in K8s, it's an array-side orphan
             # You might need to adjust this prefix ("pvc-") depending on what your specific CSI driver names volumes!
-            if vol_name.startswith("pvc-"):
+            if vol_name.startswith("pvc-") or vol_name.startswith("csi_"):
                 print("{:<15} | {:<25} | {:<40} | {:<25} | {:<20}".format(
                     "<None>", "<None>", "<None>", vol_name, "Orphaned on Array!"
                 ))
