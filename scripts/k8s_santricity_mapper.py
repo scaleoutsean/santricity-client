@@ -89,10 +89,10 @@ def main():
         sys.exit(1)
 
     # 3. Correlate and Print
-    print("\n{:<15} | {:<25} | {:<40} | {:<25} | {:<20}".format(
+    print("\n{:<15} | {:<25} | {:<40} | {:<35} | {:<20}".format(
         "Namespace", "PVC Name", "PV Name", "SANtricity Volume", "Status"
     ))
-    print("-" * 135)
+    print("-" * 147)
     
     matched_k8s_handles = set()
 
@@ -111,14 +111,14 @@ def main():
         if match_handle:
             meta = k8s_volumes[match_handle]
             matched_k8s_handles.add(match_handle)
-            print("{:<15} | {:<25} | {:<40} | {:<25} | {:<20}".format(
+            print("{:<15} | {:<25} | {:<40} | {:<35} | {:<20}".format(
                 meta["namespace"], meta["pvc_name"], meta["pv_name"], vol_name, meta["status"]
             ))
         else:
             # If a SANtricity volume starts with a likely CSI prefix but isn't in K8s, it's an array-side orphan
             # You might need to adjust this prefix ("pvc-") depending on what your specific CSI driver names volumes!
             if vol_name.startswith("pvc-") or vol_name.startswith("csi_"):
-                print("{:<15} | {:<25} | {:<40} | {:<25} | {:<20}".format(
+                print("{:<15} | {:<25} | {:<40} | {:<35} | {:<20}".format(
                     "<None>", "<None>", "<None>", vol_name, "Orphaned on Array!"
                 ))
             # Else, it's just a regular non-k8s array volume (boot luns, VMFS, etc.), so we skip logging it to keep the table clean.
@@ -126,7 +126,7 @@ def main():
     # 4. Check for Kubernetes PVs that point to a Volume Handle that DOES NOT exist on SANtricity
     for handle, meta in k8s_volumes.items():
         if handle not in matched_k8s_handles:
-             print("{:<15} | {:<25} | {:<40} | {:<25} | {:<20}".format(
+             print("{:<15} | {:<25} | {:<40} | {:<35} | {:<20}".format(
                 meta["namespace"], meta["pvc_name"], meta["pv_name"], handle, "Missing from Array!"
             ))
 

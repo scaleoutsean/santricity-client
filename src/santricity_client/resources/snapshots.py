@@ -151,3 +151,18 @@ class SnapshotsResource(ResourceBase):
     def list_schedules(self) -> list[dict[str, Any]]:
         """List snapshot schedules tied to snapshot groups."""
         return self._get("/snapshot-schedules")
+
+    def rollback(self, pit_ref: str) -> Any:
+        """Rollback a base volume to a snapshot (point-in-time) image.
+
+        Args:
+            pit_ref: The identifier of the snapshot image (pitRef / id) to restore from.
+
+        Returns:
+            The raw response (e.g., 'ok') from the array.
+        """
+        return self._symbol_request(
+            "/startPITRollback?verboseErrorResponse=true",
+            json_payload={"pitRef": [pit_ref]},
+            expect_json=False,
+        )

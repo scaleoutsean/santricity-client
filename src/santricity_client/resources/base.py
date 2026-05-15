@@ -44,6 +44,7 @@ class ResourceBase:
         *,
         method: str = "POST",
         params: Mapping[str, str] | None = None,
+        json_payload: Any | None = None,
         payload_data: Any | None = None,
         expect_json: bool = False,
     ) -> Any:
@@ -54,6 +55,7 @@ class ResourceBase:
             method,
             full_path,
             params=params,
+            json_payload=json_payload,
             data_payload=payload_data,
             expect_json=expect_json,
         )

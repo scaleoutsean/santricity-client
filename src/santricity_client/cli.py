@@ -2503,3 +2503,194 @@ def cgs_remove_member(
             return
     typer.secho(f"Successfully removed member {member} from CG.", fg=typer.colors.GREEN)
 
+@volumes_app.command("copy")
+def volumes_copy(
+    source_id: str = typer.Argument(..., help="The ID/Ref of the source volume."),
+    target_id: str = typer.Argument(..., help="The ID/Ref of the target volume."),
+    priority: str = typer.Option("priority3", "--priority", help="Copy priority (e.g. priority1 to priority4)"),
+    online: bool = typer.Option(True, "--online/--offline", help="Whether the copy is online or offline"),
+    repository_percent: float = typer.Option(5.0, "--repository-percent", help="Repository reserve percentage for online copy"),
+    target_write_protected: bool = typer.Option(False, "--target-write-protected", help="Write-protect target during copy"),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Create a volume copy job."""
+    with _build_client(
+        base_url=base_url, auth=auth, username=username, password=password, token=token,
+        verify_ssl=verify_ssl, cert_path=cert_path, timeout=timeout,
+        release_version=release_version, system_id=system_id,
+    ) as client:
+        try:
+            repo_candidate = None
+            if online:
+                source_vol = client.volumes.get(source_id)
+                pool_ref = source_vol.get("volumeGroupRef")
+                if not pool_ref:
+                    typer.secho("Failed to determine source volume's pool for online copy repository.", fg=typer.colors.RED, err=True)
+                    raise typer.Exit(1)
+                pool = client.pools.get(pool_ref)
+                
+                capacity_bytes = int((float(source_vol.get("capacity", 0)) * repository_percent) / 100)
+                
+                repo_candidate = {
+                    "candType": "newVol",
+                    "newVolCandidate": {
+                        "memberVolumeLabel": f"repos_copy_{source_vol.get('label', 'unknown')[:10]}",
+                        "memberVolumeGroupLabel": pool.get("label"),
+                        "memberCapacity": str(capacity_bytes)
+                    }
+                }
+            
+            result = client.volumes.copy(
+                source_id=source_id, target_id=target_id, priority=priority,
+                online=online, target_write_protected=target_write_protected,
+                repository_candidate=repo_candidate
+            )
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    _echo_json(result)
+
+@volumes_app.command("copy-status")
+def volumes_copy_status(
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Get the progress of volume copy jobs."""
+    with _build_client(
+        base_url=base_url, auth=auth, username=username, password=password, token=token,
+        verify_ssl=verify_ssl, cert_path=cert_path, timeout=timeout,
+        release_version=release_version, system_id=system_id,
+    ) as client:
+        try:
+            result = client.volumes.copy_status()
+            copy_ops = [op for op in result if op.get("volAction") == "volumeCopy"]
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    _echo_json(copy_ops)
+
+@volumes_app.command("copy-delete")
+def volumes_copy_delete(
+    volcopy_ref: str = typer.Argument(..., help="The volume copy job ID/Ref to delete."),
+    retain_repos: bool = typer.Option(False, "--retain-repos", help="Retain repositories when deleting"),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Delete a volume copy job."""
+    with _build_client(
+        base_url=base_url, auth=auth, username=username, password=password, token=token,
+        verify_ssl=verify_ssl, cert_path=cert_path, timeout=timeout,
+        release_version=release_version, system_id=system_id,
+    ) as client:
+        try:
+            client.volumes.delete_copy(volcopy_ref=volcopy_ref, retain_repositories=retain_repos)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    typer.secho(f"Successfully deleted volume copy job: {volcopy_ref}", fg=typer.colors.GREEN)
+
+@volumes_app.command("copy-update")
+def volumes_copy_update(
+    volcopy_ref: str = typer.Argument(..., help="The volume copy job ID/Ref to update."),
+    priority: str = typer.Option(None, "--priority", help="New copy priority (priority0 to priority4)"),
+    target_write_protected: bool = typer.Option(None, "--target-write-protected/--no-target-write-protected", help="Write-protect target during copy"),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Update ongoing volume copy job parameters."""
+    if priority is None and target_write_protected is None:
+        typer.secho("Must provide either --priority or --target-write-protected.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    with _build_client(
+        base_url=base_url, auth=auth, username=username, password=password, token=token,
+        verify_ssl=verify_ssl, cert_path=cert_path, timeout=timeout,
+        release_version=release_version, system_id=system_id,
+    ) as client:
+        try:
+            result = client.volumes.update_copy(
+                volcopy_ref=volcopy_ref,
+                priority=priority,
+                target_write_protected=target_write_protected
+            )
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+
+    _echo_json(result)
+
+@snapshots_app.command("restore")
+def snapshots_restore(
+    snapshot_ref: str = typer.Argument(..., help="Snapshot image ref (pitRef / id) to rollback to."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Rollback a base volume to a given snapshot image."""
+    with _build_client(
+        base_url=base_url, auth=auth, username=username, password=password, token=token,
+        verify_ssl=verify_ssl, cert_path=cert_path, timeout=timeout,
+        release_version=release_version, system_id=system_id,
+    ) as client:
+        try:
+            # Check for existing rollbacks on the system first
+            images = client.snapshots.list_all_images()
+            snapshot = next((img for image in images for img in (image,) if img.get("pitRef") == snapshot_ref or img.get("id") == snapshot_ref), None)
+            
+            if not snapshot:
+                typer.secho(f"Snapshot image {snapshot_ref} not found.", fg=typer.colors.RED, err=True)
+                raise typer.Exit(code=1)
+
+            base_vol = snapshot.get("baseVol")
+            # If there's an ongoing rollback, the base volume will show action == 'pitRollback'
+            base_vol_data = client.volumes.get(base_vol)
+            if base_vol_data.get("action") == "pitRollback":
+                typer.secho("A rollback is already in progress for this base volume.", fg=typer.colors.RED, err=True)
+                raise typer.Exit(code=1)
+
+            result = client.snapshots.rollback(pit_ref=snapshot["pitRef"])
+            typer.secho(f"Rollback initiated successfully. Result: {result}", fg=typer.colors.GREEN)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+

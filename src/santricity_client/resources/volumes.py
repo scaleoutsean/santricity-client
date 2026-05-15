@@ -88,3 +88,92 @@ class VolumesResource(ResourceBase):
         payload = {"expansionSize": size_bytes, "sizeUnit": "bytes"}
 
         return self._post(f"/volumes/{volume_ref}/expand", payload)
+
+    def copy(
+        self,
+        source_id: str,
+        target_id: str,
+        priority: str = "priority3",
+        online: bool = True,
+        target_write_protected: bool = False,
+        repository_candidate: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a volume copy job.
+
+        Args:
+            source_id: The source volume reference.
+            target_id: The target volume reference.
+            priority: Copy priority (default: priority3).
+            online: Whether the copy is online or offline.
+            target_write_protected: Whether the target is write-protected during copy.
+            repository_candidate: Optional repository payload for online copy.
+
+        Returns:
+            The volume copy job details.
+        """
+        payload = {
+            "sourceId": source_id,
+            "targetId": target_id,
+            "copyPriority": priority,
+            "targetWriteProtected": target_write_protected,
+            "onlineCopy": online,
+        }
+        if online and repository_candidate:
+            payload["repositoryCandidate"] = repository_candidate
+            
+        return self._post("/volume-copy-jobs", payload)
+
+    def list_copies(self) -> list[dict[str, Any]]:
+        """List active volume copy jobs.
+
+        Returns:
+            A list of volume copy jobs.
+        """
+        return self._get("/volume-copy-jobs")
+
+    def copy_status(self) -> list[dict[str, Any]]:
+        """Get progress for long-lived operations, including volume copies.
+
+        Returns:
+            A list of long-lived operations progress details.
+        """
+        response = self._post("/symbol/getLongLivedOpsProgress?verboseErrorResponse=true", {})
+        return response.get("longLivedOpsProgress", [])
+
+    def delete_copy(self, volcopy_ref: str, retain_repositories: bool = False) -> None:
+        """Delete a volume copy job.
+
+        Args:
+            volcopy_ref: The volume copy job reference.
+            retain_repositories: Whether to retain repositories used by the copy.
+        """
+        retain_str = "true" if retain_repositories else "false"
+        self._delete(f"/volume-copy-jobs/{volcopy_ref}?retainRepositories={retain_str}")
+
+    def update_copy(
+        self,
+        volcopy_ref: str,
+        priority: str | None = None,
+        target_write_protected: bool | None = None,
+    ) -> dict[str, Any]:
+        """Update properties of an existing volume copy job.
+
+        Args:
+            volcopy_ref: The volume copy job reference.
+            priority: Intervene to change copy priority (e.g. priority0 to priority4).
+            target_write_protected: Change target write protection state.
+
+        Returns:
+            The updated volume copy job details.
+        """
+        payload = {}
+        if priority is not None:
+            payload["copyPriority"] = priority
+        if target_write_protected is not None:
+            payload["targetWriteProtected"] = target_write_protected
+
+        if not payload:
+            raise ValueError("At least one attribute (priority or target_write_protected) must be specified for update.")
+
+        return self._post(f"/volume-copy-jobs/{volcopy_ref}", payload)
+
