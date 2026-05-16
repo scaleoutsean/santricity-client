@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.3.1
+
+- Add volume copy
+
 ## 0.3.0
 
 - Add delete_snapshot_volume function
