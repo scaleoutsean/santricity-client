@@ -34,16 +34,22 @@ santricity snapshots create-clone --snapshot-id snap-1 --name "clone-snap-1"
 santricity snapshots list-clones
 ```
 
-### C. Reverting (Rolling Back) a Volume
+### C. Restoring (Rolling Back) a Volume
 
 *Destructive Operation!* If your primary volume suffers file system corruption or accidental deletion, you can roll the base volume back to the exact state of the snapshot.
 
 ```bash
 # Revert the base volume to the snapshot's state
-santricity snapshots rollback --snapshot-id snap-1
+santricity snapshots restore <snapshot-id>
 ```
 
-*(Note: Any data written to the base volume after `snap-1` was taken will be lost.)*
+*(Note: Any data written to the base volume after the snapshot was taken will be lost. You may create another snapshot just before restoring, in case you think you may need that data. )*
+
+**Monitoring Progress & Protections:**
+- The CLI automatically checks to ensure no other snapshots are actively rolling back into the same base volume before proceeding.
+- During the rollback, the base volume's `action` dynamically changes to `pitRollback`. Once finished, it returns to `none`. 
+- *(Note: Snapshot rollbacks are tracked natively on the volume. In contrast, to check the progress of offline full volume copies, you would use `santricity volumes copy-status`).*
+- [See the documentation for more](https://docs.netapp.com/us-en/e-series-santricity/sm-storage/start-snapshot-image-rollback-for-base-volume.html)
 
 ### D. Cleanup and Teardown
 

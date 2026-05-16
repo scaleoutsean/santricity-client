@@ -2531,23 +2531,15 @@ def volumes_copy(
         try:
             repo_candidate = None
             if online:
-                source_vol = client.volumes.get(source_id)
-                pool_ref = source_vol.get("volumeGroupRef")
-                if not pool_ref:
-                    typer.secho("Failed to determine source volume's pool for online copy repository.", fg=typer.colors.RED, err=True)
+                candidates = client.snapshots.get_repo_group_candidates_single(
+                    base_volume_ref=source_id,
+                    percent_capacity=int(repository_percent) if repository_percent else 20,
+                    concat_volume_type="snapshot"
+                )
+                if not candidates or not isinstance(candidates, list) or "candidate" not in candidates[0]:
+                    typer.secho("Could not retrieve a repository candidate for the online copy from the array.", fg=typer.colors.RED, err=True)
                     raise typer.Exit(1)
-                pool = client.pools.get(pool_ref)
-                
-                capacity_bytes = int((float(source_vol.get("capacity", 0)) * repository_percent) / 100)
-                
-                repo_candidate = {
-                    "candType": "newVol",
-                    "newVolCandidate": {
-                        "memberVolumeLabel": f"repos_copy_{source_vol.get('label', 'unknown')[:10]}",
-                        "memberVolumeGroupLabel": pool.get("label"),
-                        "memberCapacity": str(capacity_bytes)
-                    }
-                }
+                repo_candidate = candidates[0]["candidate"]
             
             result = client.volumes.copy(
                 source_id=source_id, target_id=target_id, priority=priority,
@@ -2651,6 +2643,35 @@ def volumes_copy_update(
             return
 
     _echo_json(result)
+
+
+@volumes_app.command("copy-cleanup")
+def volumes_copy_cleanup(
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Clean up all completed or failed volume copy jobs automatically."""
+    from santricity_client.automation.volumecopy import VolumeCopyAutomation
+    with _build_client(
+        base_url=base_url, auth=auth, username=username, password=password, token=token,
+        verify_ssl=verify_ssl, cert_path=cert_path, timeout=timeout,
+        release_version=release_version, system_id=system_id,
+    ) as client:
+        try:
+            automater = VolumeCopyAutomation(client)
+            automater.cleanup_completed_copies()
+            typer.secho("Cleanup routine executed successfully.", fg=typer.colors.GREEN)
+        except Exception as exc:
+            typer.secho(f"Exception during cleanup: {exc}", fg=typer.colors.RED, err=True)
+            return
 
 @snapshots_app.command("restore")
 def snapshots_restore(
