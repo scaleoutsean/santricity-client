@@ -144,3 +144,20 @@ santricity consistency-groups delete --cg-id cg-xyz
 *   **Consistency Group:** Best for databases (Data + Logs), clustered file systems, or multi-disk applications where writes must be frozen in standard order. Use `santricity consistency-groups`.
 *   **Reverts:** Use only for critical recovery (i.e. filesystem corruption). Destroys current state of base volume(s).
 *   **Linked Clones:** Use for mounting snapshots to hosts for analytics, backups, or testing. Read-only Linked Clones are sufficient for Linux backup applications.
+
+---
+
+## 3. Copying from Linked Clones to Regular Volumes
+
+If you want to create a full, standalone Read-Write copy of a snapshot, you can use the standard Volume Copy feature and supply the Linked Clone (Snapshot Volume) ID as the source. 
+
+**Important:** You **MUST** use the `--offline` flag when copying from a Read-Only Linked Clone (ROLC) or a Read-Only Consistency Group Clone.
+
+```bash
+santricity volumes copy <clone-id> <target-volume-id> --offline
+```
+
+*Why is `--offline` required?* 
+An "online" copy operation requires the array to create a temporary tracking repository on the source volume to track new incoming writes that occur during the background copy process. Because Read-Only Linked Clones fundamentally reject writes, the array cannot establish this tracking repository. Using `--offline` bypasses the tracking requirement and allows the block-for-block copy to proceed successfully.
+
+*(Note: The SANtricity UI does not expose a "Copy" button on Snapshot Volumes, leading to misleading errors if you try to initiate copies via other UI menus. The CLI API bypasses this limitation, provided you use the `--offline` flag).*

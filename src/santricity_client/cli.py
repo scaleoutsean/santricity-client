@@ -1666,6 +1666,41 @@ def snapshots_delete_repo_group(
     raise typer.Exit(code=1)
 
 
+@snapshots_app.command("delete-clone")
+def snapshots_delete_clone(
+    clone_id: str = typer.Argument(..., help="Snapshot volume (Linked Clone) ID / viewRef to delete."),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Delete a snapshot volume (Linked Clone) by its ID/viewRef."""
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        try:
+            client.snapshots.delete_snapshot_volume(clone_id)
+        except RequestError as exc:
+            _handle_request_error(exc)
+            return
+    typer.secho(f"Snapshot volume {clone_id!r} deleted.", fg=typer.colors.GREEN)
+
+
 @volumes_app.command("list")
 def volumes_list(
     base_url: str = _SHARED_OPTIONS["base_url"],
