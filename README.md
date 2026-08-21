@@ -266,7 +266,7 @@ Notes:
 - For complex or nested payloads prefer `--payload` (path to a JSON file) or using `--json` with programmatic clients.
  - If you supply size-related values via `--extras`, provide sizes in bytes (the CLI's `--size`/`--size-unit` helpers are not applied to extras).
 
-Audit duplicate names at any time:
+Audit duplicate names at any time (although they *should* be rejected by SANtricity):
 
 ```bash
 santricity volumes check-names \
