@@ -1972,6 +1972,119 @@ def volumes_expand(
     _echo_json(result)
 
 
+@volumes_app.command("modify")
+def volumes_modify(
+    volume: str = typer.Argument(..., help="The label, ID, or ref of the volume to modify."),
+    segment_size: float | None = typer.Option(
+        None,
+        "--segment-size",
+        help="New segment size (e.g. 128).",
+    ),
+    segment_size_unit: str = typer.Option(
+        "kib",
+        "--segment-size-unit",
+        help="Unit for segment size (bytes, kb, mb, gb, tb, kib, mib).",
+        show_default=True,
+    ),
+    wait: bool = typer.Option(
+        False, 
+        "--wait", 
+        help="Wait for the modification operation to complete (for long-lived operations)."
+    ),
+    base_url: str = _SHARED_OPTIONS["base_url"],
+    username: str | None = _SHARED_OPTIONS["username"],
+    password: str | None = _SHARED_OPTIONS["password"],
+    token: str | None = _SHARED_OPTIONS["token"],
+    auth: str = _SHARED_OPTIONS["auth"],
+    verify_ssl: bool = _SHARED_OPTIONS["verify_ssl"],
+    cert_path: Path | None = _SHARED_OPTIONS["cert_path"],
+    timeout: float = _SHARED_OPTIONS["timeout"],
+    release_version: str | None = _SHARED_OPTIONS["release_version"],
+    system_id: str | None = _SHARED_OPTIONS["system_id"],
+) -> None:
+    """Modify volume properties."""
+    if segment_size is None:
+        typer.secho("No properties provided to modify.", err=True, fg=typer.colors.YELLOW)
+        return
+
+    with _build_client(
+        base_url=base_url,
+        auth=auth,
+        username=username,
+        password=password,
+        token=token,
+        verify_ssl=verify_ssl,
+        cert_path=cert_path,
+        timeout=timeout,
+        release_version=release_version,
+        system_id=system_id,
+    ) as client:
+        volume_ref, volume_label = _resolve_volume_ref(client, volume)
+        
+        unit_multipliers = {
+            "bytes": 1,
+            "b": 1,
+            "kb": 1000,
+            "mb": 1000**2,
+            "gb": 1000**3,
+            "tb": 1000**4,
+            "kib": 1024,
+            "mib": 1024**2,
+            "gib": 1024**3,
+            "tib": 1024**4,
+        }
+        
+        if segment_size is not None:
+            normalized_unit = segment_size_unit.lower()
+            if normalized_unit not in unit_multipliers:
+                typer.secho(
+                    f"Invalid unit '{segment_size_unit}'. Supported units: {', '.join(unit_multipliers.keys())}",
+                    err=True, fg=typer.colors.RED
+                )
+                raise typer.Exit(code=1)
+                
+            segment_size_bytes = int(segment_size * unit_multipliers[normalized_unit])
+            
+            try:
+                client.volumes.start_segment_sizing(volume_ref, segment_size_bytes)
+                typer.secho(f"Started segment sizing on '{volume_label}' ({volume_ref})", fg=typer.colors.GREEN)
+                
+                if wait:
+                    import time
+                    
+                    typer.secho("Waiting 30 seconds for job to start...", fg=typer.colors.YELLOW)
+                    time.sleep(30)
+                    
+                    typer.secho("Polling for job completion...", fg=typer.colors.YELLOW)
+                    
+                    while True:
+                        ops = client.volumes.copy_status()
+                        if not ops:
+                            typer.secho("\nJob completed (no long-lived ops found).", fg=typer.colors.GREEN)
+                            break
+                        
+                        # Find the op for our volume, usually under 'segSize' or 'remappingDseg' depending on FW
+                        found = False
+                        for op in ops:
+                            seg_size_obj = op.get("segSize")
+                            if seg_size_obj and seg_size_obj.get("volumeRef") == volume_ref:
+                                found = True
+                                compl = seg_size_obj.get('volumePercentComplete', 'unknown')
+                                ttc = seg_size_obj.get('volumeTimeToCompletion', 'unknown')
+                                typer.secho(f"Progress: {compl}% (ETA: {ttc} mins)", fg=typer.colors.BLUE)
+                                break
+                        
+                        if not found:
+                             typer.secho("\nJob no longer found in long-lived ops. Completed.", fg=typer.colors.GREEN)
+                             break
+                             
+                        time.sleep(20)
+                        
+            except RequestError as exc:
+                _handle_request_error(exc)
+                return
+
+
 @mappings_app.command("list")
 def mappings_list(
     base_url: str = _SHARED_OPTIONS["base_url"],

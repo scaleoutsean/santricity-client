@@ -139,6 +139,25 @@ class VolumesResource(ResourceBase):
         """
         response = self._post("/symbol/getLongLivedOpsProgress?verboseErrorResponse=true", {})
         return response.get("longLivedOpsProgress", [])
+        
+    def start_segment_sizing(self, volume_ref: str, segment_size_bytes: int) -> str:
+        """Start a volume segment size modification for a RAID volume.
+
+        Args:
+            volume_ref: The volume reference.
+            segment_size_bytes: The new segment size in bytes.
+
+        Returns:
+            The response string, typically "ok".
+        """
+        payload = {
+            "volumeRef": volume_ref,
+            "newSegmentSize": segment_size_bytes,
+        }
+        
+        # SANtricity old SYMbol API returns a plain string, requests library might try to parse JSON
+        # by default, but ResourceBase handles JSON if not caught. Needs checking.
+        return self._client.request("POST", "/symbol/startVolumeSegmentSizing?verboseErrorResponse=true", json_payload=payload, expect_json=False)
 
     def delete_copy(self, volcopy_ref: str, retain_repositories: bool = False) -> None:
         """Delete a volume copy job.

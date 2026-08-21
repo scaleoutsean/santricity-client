@@ -72,3 +72,19 @@ def test_expand_volume_invalid_unit():
     client = build_client()
     with pytest.raises(ValueError, match="Invalid unit: bad_unit"):
         client.volumes.expand("vol1", 100, unit="bad_unit")
+
+
+def test_start_segment_sizing(requests_mock):
+    client = build_client()
+    volume_ref = "vol2"
+    new_segment_size = 131072 # 128 KiB
+
+    requests_mock.post(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/symbol/startVolumeSegmentSizing?verboseErrorResponse=true",
+        text="ok",
+        additional_matcher=lambda request: request.json()
+        == {"volumeRef": volume_ref, "newSegmentSize": new_segment_size},
+    )
+
+    result = client.volumes.start_segment_sizing(volume_ref, new_segment_size)
+    assert result == "ok"
