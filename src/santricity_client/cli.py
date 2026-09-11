@@ -1703,6 +1703,11 @@ def snapshots_delete_clone(
 
 @volumes_app.command("list")
 def volumes_list(
+    pool_id: str | None = typer.Option(
+        None,
+        "--pool-id",
+        help="Filter volumes by storage pool identifier (e.g., volumeGroupRef or poolId).",
+    ),
     base_url: str = _SHARED_OPTIONS["base_url"],
     username: str | None = _SHARED_OPTIONS["username"],
     password: str | None = _SHARED_OPTIONS["password"],
@@ -1734,6 +1739,20 @@ def volumes_list(
         except RequestError as exc:
             _handle_request_error(exc)
             return
+
+    if pool_id is not None:
+        volumes = [
+            v
+            for v in volumes
+            if str(
+                v.get("volumeGroupRef")
+                or v.get("poolId")
+                or v.get("storagePoolId")
+                or ""
+            )
+            == pool_id
+        ]
+
     _present_output(volumes, view_id="volumes.list", json_output=output_json)
 
 

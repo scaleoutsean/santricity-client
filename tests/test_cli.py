@@ -941,6 +941,76 @@ def test_snapshots_create_snapshot_auto_min_free_fails_without_growth(requests_m
     assert "no repository candidates found" in str(result.exception).lower()
 
 
+def test_volumes_list_cli(requests_mock):
+    base_url = "https://array/devmgr/v2"
+    volumes_data = [
+        {"volumeRef": "vol-1", "name": "vol_one", "volumeGroupRef": "pool-A", "capacity": "1073741824"},
+        {"volumeRef": "vol-2", "name": "vol_two", "volumeGroupRef": "pool-B", "capacity": "2147483648"},
+    ]
+    requests_mock.get(
+        f"{base_url}/storage-systems/{SYSTEM_ID}/volumes",
+        json=volumes_data,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "volumes",
+            "list",
+            "--base-url",
+            base_url,
+            "--username",
+            "admin",
+            "--password",
+            "secret",
+            "--system-id",
+            SYSTEM_ID,
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert len(payload) == 2
+
+
+def test_volumes_list_cli_pool_id_filter(requests_mock):
+    base_url = "https://array/devmgr/v2"
+    volumes_data = [
+        {"volumeRef": "vol-1", "name": "vol_one", "volumeGroupRef": "pool-A", "capacity": "1073741824"},
+        {"volumeRef": "vol-2", "name": "vol_two", "volumeGroupRef": "pool-B", "capacity": "2147483648"},
+        {"volumeRef": "vol-3", "name": "vol_three", "poolId": "pool-A", "capacity": "1073741824"},
+    ]
+    requests_mock.get(
+        f"{base_url}/storage-systems/{SYSTEM_ID}/volumes",
+        json=volumes_data,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "volumes",
+            "list",
+            "--pool-id",
+            "pool-A",
+            "--base-url",
+            base_url,
+            "--username",
+            "admin",
+            "--password",
+            "secret",
+            "--system-id",
+            SYSTEM_ID,
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert len(payload) == 2
+    assert {v["volumeRef"] for v in payload} == {"vol-1", "vol-3"}
+
+
 def test_volumes_create_cli(requests_mock):
     base_url = "https://array/devmgr/v2"
     requests_mock.get(
