@@ -1224,6 +1224,76 @@ def test_volumes_create_cli_fallbacks_to_legacy_endpoint(requests_mock):
     assert requests_mock.call_count == 3
 
 
+def test_volumes_modify_name_cli(requests_mock):
+    base_url = "https://array/devmgr/v2"
+    volume_ref = "02000000600A098000E3C1B000002BE3620B681E"
+    requests_mock.get(
+        f"{base_url}/storage-systems/{SYSTEM_ID}/volumes",
+        json=[{"volumeRef": volume_ref, "name": "old_name", "label": "old_name"}],
+    )
+    requests_mock.post(
+        f"{base_url}/storage-systems/{SYSTEM_ID}/volumes/{volume_ref}",
+        json={"volumeRef": volume_ref, "name": "new_name", "label": "new_name"},
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "volumes",
+            "modify",
+            volume_ref,
+            "--name",
+            "new_name",
+            "--base-url",
+            base_url,
+            "--username",
+            "admin",
+            "--password",
+            "secret",
+            "--system-id",
+            SYSTEM_ID,
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["name"] == "new_name"
+
+
+def test_volumes_modify_name_cli_blocks_duplicate(requests_mock):
+    base_url = "https://array/devmgr/v2"
+    volume_ref = "02000000600A098000E3C1B000002BE3620B681E"
+    requests_mock.get(
+        f"{base_url}/storage-systems/{SYSTEM_ID}/volumes",
+        json=[
+            {"volumeRef": volume_ref, "name": "vol1", "label": "vol1"},
+            {"volumeRef": "other-ref", "name": "existing_name", "label": "existing_name"},
+        ],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "volumes",
+            "modify",
+            volume_ref,
+            "--name",
+            "existing_name",
+            "--base-url",
+            base_url,
+            "--username",
+            "admin",
+            "--password",
+            "secret",
+            "--system-id",
+            SYSTEM_ID,
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "already exists" in result.stderr
+
+
 def test_mappings_list_cli(requests_mock):
     base_url = "https://array/devmgr/v2"
     requests_mock.get(

@@ -1994,6 +1994,12 @@ def volumes_expand(
 @volumes_app.command("modify")
 def volumes_modify(
     volume: str = typer.Argument(..., help="The label, ID, or ref of the volume to modify."),
+    name: str | None = typer.Option(
+        None,
+        "--name",
+        "-n",
+        help="New name/label for the volume.",
+    ),
     segment_size: float | None = typer.Option(
         None,
         "--segment-size",
@@ -2003,6 +2009,12 @@ def volumes_modify(
         "kib",
         "--segment-size-unit",
         help="Unit for segment size (bytes, kb, mb, gb, tb, kib, mib).",
+        show_default=True,
+    ),
+    require_unique_name: bool = typer.Option(
+        True,
+        "--require-unique-name/--allow-duplicate-name",
+        help="Validate that no existing volume already uses the new name.",
         show_default=True,
     ),
     wait: bool = typer.Option(
@@ -2022,7 +2034,7 @@ def volumes_modify(
     system_id: str | None = _SHARED_OPTIONS["system_id"],
 ) -> None:
     """Modify volume properties."""
-    if segment_size is None:
+    if name is None and segment_size is None:
         typer.secho("No properties provided to modify.", err=True, fg=typer.colors.YELLOW)
         return
 
@@ -2040,6 +2052,16 @@ def volumes_modify(
     ) as client:
         volume_ref, volume_label = _resolve_volume_ref(client, volume)
         
+        if name is not None:
+            if require_unique_name:
+                _ensure_volume_name_is_unique(client, name)
+            try:
+                result = client.volumes.update(volume_ref, name=name)
+                _echo_json(result)
+            except RequestError as exc:
+                _handle_request_error(exc)
+                return
+
         unit_multipliers = {
             "bytes": 1,
             "b": 1,

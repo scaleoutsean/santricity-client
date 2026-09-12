@@ -44,6 +44,41 @@ class VolumesResource(ResourceBase):
     def delete(self, volume_ref: str) -> dict[str, Any]:
         return self._delete(f"/volumes/{volume_ref}")
 
+    def update(
+        self,
+        volume_ref: str,
+        name: str | None = None,
+        payload: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Update volume properties (such as name/label).
+
+        Args:
+            volume_ref: The volume reference.
+            name: Optional new name/label for the volume.
+            payload: Optional dictionary of raw properties to update.
+
+        Returns:
+            The updated volume object.
+        """
+        body: dict[str, Any] = dict(payload) if payload else {}
+        if name is not None:
+            body["name"] = name
+        if not body:
+            raise ValueError("No update properties provided.")
+        return self._post(f"/volumes/{volume_ref}", body)
+
+    def rename(self, volume_ref: str, new_name: str) -> dict[str, Any]:
+        """Rename a volume.
+
+        Args:
+            volume_ref: The volume reference.
+            new_name: The new name/label for the volume.
+
+        Returns:
+            The updated volume object.
+        """
+        return self.update(volume_ref, name=new_name)
+
     def create(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         return self._post("/volumes", payload)
 

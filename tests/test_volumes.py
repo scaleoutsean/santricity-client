@@ -74,6 +74,42 @@ def test_expand_volume_invalid_unit():
         client.volumes.expand("vol1", 100, unit="bad_unit")
 
 
+def test_update_volume_name(requests_mock):
+    client = build_client()
+    volume_ref = "vol1"
+    new_name = "vol_renamed"
+
+    requests_mock.post(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/volumes/{volume_ref}",
+        json={"volumeRef": volume_ref, "name": new_name, "label": new_name},
+        additional_matcher=lambda request: request.json() == {"name": new_name},
+    )
+
+    result = client.volumes.update(volume_ref, name=new_name)
+    assert result["name"] == new_name
+
+
+def test_rename_volume(requests_mock):
+    client = build_client()
+    volume_ref = "vol1"
+    new_name = "vol_renamed_alias"
+
+    requests_mock.post(
+        f"https://array/devmgr/v2/storage-systems/{DEFAULT_SYSTEM_ID}/volumes/{volume_ref}",
+        json={"volumeRef": volume_ref, "name": new_name, "label": new_name},
+        additional_matcher=lambda request: request.json() == {"name": new_name},
+    )
+
+    result = client.volumes.rename(volume_ref, new_name)
+    assert result["name"] == new_name
+
+
+def test_update_volume_empty_payload():
+    client = build_client()
+    with pytest.raises(ValueError, match="No update properties provided."):
+        client.volumes.update("vol1")
+
+
 def test_start_segment_sizing(requests_mock):
     client = build_client()
     volume_ref = "vol2"
