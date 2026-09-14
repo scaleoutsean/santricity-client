@@ -1260,6 +1260,42 @@ def test_volumes_modify_name_cli(requests_mock):
     assert payload["name"] == "new_name"
 
 
+def test_volumes_modify_segment_size_cli(requests_mock):
+    base_url = "https://array/devmgr/v2"
+    volume_ref = "02000000600A098000E3C1B000002BE3620B681E"
+    requests_mock.get(
+        f"{base_url}/storage-systems/{SYSTEM_ID}/volumes",
+        json=[{"volumeRef": volume_ref, "name": "vol1", "label": "vol1"}],
+    )
+    requests_mock.post(
+        f"{base_url}/storage-systems/{SYSTEM_ID}/symbol/startVolumeSegmentSizing?verboseErrorResponse=true",
+        text="ok",
+        additional_matcher=lambda req: req.json() == {"volumeRef": volume_ref, "newSegmentSize": 262144},
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "volumes",
+            "modify",
+            volume_ref,
+            "--segment-size",
+            "256",
+            "--base-url",
+            base_url,
+            "--username",
+            "admin",
+            "--password",
+            "secret",
+            "--system-id",
+            SYSTEM_ID,
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Started segment sizing" in result.stdout
+
+
 def test_volumes_modify_name_cli_blocks_duplicate(requests_mock):
     base_url = "https://array/devmgr/v2"
     volume_ref = "02000000600A098000E3C1B000002BE3620B681E"

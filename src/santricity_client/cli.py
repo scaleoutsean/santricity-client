@@ -2003,12 +2003,12 @@ def volumes_modify(
     segment_size: float | None = typer.Option(
         None,
         "--segment-size",
-        help="New segment size (e.g. 128).",
+        help="New segment size (e.g. 128, 256, 512).",
     ),
     segment_size_unit: str = typer.Option(
         "kib",
         "--segment-size-unit",
-        help="Unit for segment size (bytes, kb, mb, gb, tb, kib, mib).",
+        help="Unit for segment size (kib, mib, kb, mb, bytes).",
         show_default=True,
     ),
     require_unique_name: bool = typer.Option(
