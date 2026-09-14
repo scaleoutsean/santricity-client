@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.3.2
+
+- Add volume segment size modify (for RAID-based volumes)
+
 ## 0.3.1
 
 - Add volume copy
