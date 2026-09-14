@@ -39,7 +39,7 @@ from santricity_client.auth.basic import BasicAuth
 client = SANtricityClient(
     base_url="https://array01.example.com:8443/devmgr/v2",
     auth_strategy=BasicAuth(username="admin", password="secret"),
-    release_version="11.94",
+    release_version="12.1",
     system_id="600A098000F63714000000005E79C17C",  # storage-system WWN (see below)
 )
 
@@ -196,6 +196,9 @@ santricity volumes expand <volume-ref> 50 --unit gb
 
 # Delete a mapping
 santricity mappings delete <mapping-ref>
+
+# Change RAID-based volume's segment size to 256 KiB (WARNING: creates a very long-running background job!)
+santricity volumes modify <volume-ref> --segment-size 256
 ```
 
 The CLI validates object name uniqueness (within the same category) by default.
