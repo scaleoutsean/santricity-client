@@ -1224,6 +1224,41 @@ def test_volumes_create_cli_fallbacks_to_legacy_endpoint(requests_mock):
     assert requests_mock.call_count == 3
 
 
+def test_volumes_expand_cli_by_name_defaults_to_gib(requests_mock):
+    base_url = "https://array/devmgr/v2"
+    volume_ref = "02000000600A098000E3C1B000002BE3620B681E"
+    requests_mock.get(
+        f"{base_url}/storage-systems/{SYSTEM_ID}/volumes",
+        json=[{"volumeRef": volume_ref, "name": "myvol", "label": "myvol"}],
+    )
+    requests_mock.post(
+        f"{base_url}/storage-systems/{SYSTEM_ID}/volumes/{volume_ref}/expand",
+        json={"percentComplete": 0},
+        additional_matcher=lambda req: req.json() == {"expansionSize": 16 * 1024**3, "sizeUnit": "bytes"},
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "volumes",
+            "expand",
+            "myvol",
+            "16",
+            "--base-url",
+            base_url,
+            "--username",
+            "admin",
+            "--password",
+            "secret",
+            "--system-id",
+            SYSTEM_ID,
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "16 GIB" in result.stdout
+
+
 def test_volumes_modify_name_cli(requests_mock):
     base_url = "https://array/devmgr/v2"
     volume_ref = "02000000600A098000E3C1B000002BE3620B681E"

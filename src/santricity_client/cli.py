@@ -1949,7 +1949,7 @@ def volumes_delete(
 
 @volumes_app.command("expand")
 def volumes_expand(
-    volume_ref: str = typer.Argument(..., help="The ID/Ref of the volume to expand."),
+    volume: str = typer.Argument(..., help="The label, ID, or ref of the volume to expand."),
     size: float = typer.Argument(..., help="New total capacity of the volume."),
     base_url: str = _SHARED_OPTIONS["base_url"],
     username: str | None = _SHARED_OPTIONS["username"],
@@ -1962,9 +1962,9 @@ def volumes_expand(
     release_version: str | None = _SHARED_OPTIONS["release_version"],
     system_id: str | None = _SHARED_OPTIONS["system_id"],
     unit: str = typer.Option(
-        "gb",
+        "gib",
         "--unit",
-        help="Unit for size (bytes, kb, mb, gb, tb).",
+        help="Unit for size (bytes, kb, mb, gb, tb, kib, mib, gib, tib).",
         show_default=True,
     ),
 ) -> None:
@@ -1982,10 +1982,19 @@ def volumes_expand(
         release_version=release_version,
         system_id=system_id,
     ) as client:
+        volume_ref, volume_label = _resolve_volume_ref(client, volume)
+        typer.secho(
+            f"Expanding '{volume_label}' ({volume_ref}) to {size:g} {unit.upper()}...",
+            fg=typer.colors.YELLOW,
+        )
         try:
             result = client.volumes.expand(volume_ref, size, unit=unit)
-        except RequestError as exc:
-            _handle_request_error(exc)
+        except (RequestError, ValueError) as exc:
+            if isinstance(exc, RequestError):
+                _handle_request_error(exc)
+            else:
+                typer.secho(str(exc), err=True, fg=typer.colors.RED)
+                raise typer.Exit(code=1) from exc
             return
 
     _echo_json(result)
